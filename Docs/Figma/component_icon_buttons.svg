@@ -1,0 +1,347 @@
+<svg viewBox="0 0 900 1180" xmlns="http://www.w3.org/2000/svg" xmlns:c2pa="http://c2pa.org/manifest"><metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTowODhhMzVjYS1jZjlkLTQzODctYWY4NC0xNDI2YWRjYTNhZTUAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaFZmW6tZrrJBGDoDSU5rUI0AAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDpkYTc3NDMyOS1jY2QyLTRlMTUtODNmYS0zOGYyODczNzU5NThscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoggJ7h29SenQC3b7V7vkrnQAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggL2B4rhFuMILPCHRtkwh3Ib65BhReL4V5X6TepWi9JdCkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaNl1qYYAvKbAhHbXBvscJaMAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRNAAAAAAAAAAAAAAAAAGRoYXNoWCCnX56ZaCu//ZxFsF1+7vw63gvLTTmN3RxzxSCKU/bhvGRuYW1lbmp1bWJmIG1hbmlmZXN0amV4Y2x1c2lvbnOBomVzdGFydBh+Zmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjA4OGEzNWNhLWNmOWQtNDM4Ny1hZjg0LTE0MjZhZGNhM2FlNS9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjU3MGUyOWQ3LTc2M2YtNGNhNC04ZGIwLTQ2MGNhNDk0ODc1ZXJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAvYHiuEW4wgs8IdG2TCHchvrkGFF4vhXlfpN6laL0l0KJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggUwT9fSGcJaY8JaaCZDYKKCYw5RuMlqmzfoq5WVZUH/iiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggIgh47STZWFqMA4qZLR0NmJM6dlxctym5iPt+n1SWEgd0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQDZd2LbG64iPPFYgedifpYfIroyIiHDRNAtSytPUqLaAvtlZdL4B0Nda+LYiK4Z7cEHCt3SHfwOWX8y33rWYoOc=</c2pa:manifest></metadata>
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lilita+One&amp;family=Baloo+2:wght@600;700;800&amp;family=JetBrains+Mono:wght@700&amp;display=swap');
+      .display { font-family: 'Lilita One', sans-serif; }
+      .body { font-family: 'Baloo 2', sans-serif; }
+      .mono { font-family: 'JetBrains Mono', monospace; }
+      .cap { font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 10px; fill: #FFF9EA; fill-opacity: 0.5; }
+    </style>
+  </defs>
+
+  <rect width="900" height="1180" fill="#0B0F14"/>
+
+  <text x="48" y="58" class="body" font-weight="800" font-size="15" letter-spacing="3" fill="#D7F900">PICKLEBALL · ICON &amp; UTILITY BUTTONS</text>
+  <text x="48" y="94" class="display" font-size="34" fill="#FFF9EA">THE REST OF THE SET</text>
+  <line x1="48" y1="114" x2="852" y2="114" stroke="#D7F900" stroke-width="2" stroke-dasharray="10 8"/>
+
+  <rect x="48" y="132" width="804" height="48" rx="8" fill="#12171C" stroke="#0F4C5C" stroke-width="3"/>
+  <text x="68" y="152" class="body" font-size="13" fill="#FFF9EA">Same recipe throughout: BASE (dark shade, full) + FACE (top-aligned, shorter) + SHEEN (hugs top edge). Circular = 52px, square = 56px, wall 12px.</text>
+  <text x="68" y="171" class="body" font-size="13" fill="#FFF9EA" fill-opacity="0.6">Dark utility variant uses panel #12171C over #050709 so it recedes; colored variants use their own shade pair.</text>
+
+  <!-- ================= ROW 1 · NAVIGATION ================= -->
+  <text x="48" y="216" class="body" font-weight="800" font-size="13" letter-spacing="2" fill="#D7F900">NAVIGATION</text>
+
+  <!-- Back -->
+  <g id="ico-back">
+    <circle cx="80" cy="270" r="26" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="80" cy="266" r="20" fill="#12171C"/>
+    <path d="M62,260 A20,20 0 0 1 98,260 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M87,256 l-11,10 11,10" fill="none" stroke="#FFF9EA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="80" y="318" text-anchor="middle" class="cap">BACK</text>
+  </g>
+
+  <!-- Close -->
+  <g id="ico-close">
+    <circle cx="176" cy="270" r="26" fill="#7A1C0A" stroke="#000" stroke-width="5"/>
+    <circle cx="176" cy="266" r="20" fill="#FF4B26"/>
+    <path d="M158,260 A20,20 0 0 1 194,260 Z" fill="#FFF9EA" fill-opacity="0.3"/>
+    <path d="M169,259 l14,14 M183,259 l-14,14" stroke="#FFF9EA" stroke-width="4.5" stroke-linecap="round"/>
+    <text x="176" y="318" text-anchor="middle" class="cap">CLOSE</text>
+  </g>
+
+  <!-- Settings -->
+  <g id="ico-settings">
+    <circle cx="272" cy="270" r="26" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="272" cy="266" r="20" fill="#12171C"/>
+    <path d="M254,260 A20,20 0 0 1 290,260 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <g transform="translate(272,266)">
+      <path d="M-3,-14 h6 l1,4 4,2 4,-2 4,5 -3,3 0,4 3,3 -4,5 -4,-2 -4,2 -1,4 h-6 l-1,-4 -4,-2 -4,2 -4,-5 3,-3 0,-4 -3,-3 4,-5 4,2 4,-2 z" fill="#FFF9EA" fill-opacity="0.9"/>
+      <circle cx="0" cy="0" r="4.5" fill="#12171C"/>
+    </g>
+    <text x="272" y="318" text-anchor="middle" class="cap">SETTINGS</text>
+  </g>
+
+  <!-- Menu -->
+  <g id="ico-menu">
+    <circle cx="368" cy="270" r="26" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="368" cy="266" r="20" fill="#12171C"/>
+    <path d="M350,260 A20,20 0 0 1 386,260 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M358,259 h20 M358,266 h20 M358,273 h20" stroke="#FFF9EA" stroke-width="4" stroke-linecap="round"/>
+    <text x="368" y="318" text-anchor="middle" class="cap">MENU</text>
+  </g>
+
+  <!-- Info -->
+  <g id="ico-info">
+    <circle cx="464" cy="270" r="26" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="464" cy="266" r="20" fill="#12171C"/>
+    <path d="M446,260 A20,20 0 0 1 482,260 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <circle cx="464" cy="257" r="2.6" fill="#FFF9EA"/>
+    <rect x="461.5" y="262" width="5" height="14" rx="2.5" fill="#FFF9EA"/>
+    <text x="464" y="318" text-anchor="middle" class="cap">INFO</text>
+  </g>
+
+  <!-- Help -->
+  <g id="ico-help">
+    <circle cx="560" cy="270" r="26" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="560" cy="266" r="20" fill="#12171C"/>
+    <path d="M542,260 A20,20 0 0 1 578,260 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M553,259 a7,7 0 0 1 14,1 c0,4 -6,4 -6,9" fill="none" stroke="#FFF9EA" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="561" cy="276" r="2.6" fill="#FFF9EA"/>
+    <text x="560" y="318" text-anchor="middle" class="cap">HELP</text>
+  </g>
+
+  <!-- Chevron next -->
+  <g id="ico-next">
+    <circle cx="656" cy="270" r="26" fill="#6B7A00" stroke="#000" stroke-width="5"/>
+    <circle cx="656" cy="266" r="20" fill="#D7F900"/>
+    <path d="M638,260 A20,20 0 0 1 674,260 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <path d="M651,256 l11,10 -11,10" fill="none" stroke="#0B0F14" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="656" y="318" text-anchor="middle" class="cap">NEXT</text>
+  </g>
+
+  <!-- Refresh -->
+  <g id="ico-refresh">
+    <circle cx="752" cy="270" r="26" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="752" cy="266" r="20" fill="#12171C"/>
+    <path d="M734,260 A20,20 0 0 1 770,260 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M762,266 a10,10 0 1 1 -4,-8" fill="none" stroke="#FFF9EA" stroke-width="4" stroke-linecap="round"/>
+    <path d="M760,252 v7 h-7" fill="none" stroke="#FFF9EA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="752" y="318" text-anchor="middle" class="cap">REFRESH</text>
+  </g>
+
+  <!-- ================= ROW 2 · IN-MATCH ================= -->
+  <text x="48" y="376" class="body" font-weight="800" font-size="13" letter-spacing="2" fill="#D7F900">IN-MATCH CONTROLS</text>
+
+  <!-- Pause -->
+  <g id="ico-pause">
+    <rect x="54" y="404" width="56" height="56" rx="18" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="60" y="410" width="44" height="38" rx="13" fill="#12171C"/>
+    <path d="M71,410 H93 A9,9 0 0 1 102,419 V423 H62 V419 A9,9 0 0 1 71,410 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <rect x="74" y="422" width="6" height="18" rx="2" fill="#FFF9EA"/>
+    <rect x="85" y="422" width="6" height="18" rx="2" fill="#FFF9EA"/>
+    <text x="82" y="480" text-anchor="middle" class="cap">PAUSE</text>
+  </g>
+
+  <!-- Resume -->
+  <g id="ico-resume">
+    <rect x="150" y="404" width="56" height="56" rx="18" fill="#6B7A00" stroke="#000" stroke-width="5"/>
+    <rect x="156" y="410" width="44" height="38" rx="13" fill="#D7F900"/>
+    <path d="M167,410 H189 A9,9 0 0 1 198,419 V423 H158 V419 A9,9 0 0 1 167,410 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <path d="M173,421 l16,10 -16,10 z" fill="#0B0F14"/>
+    <text x="178" y="480" text-anchor="middle" class="cap">RESUME</text>
+  </g>
+
+  <!-- Sound on -->
+  <g id="ico-sound-on">
+    <rect x="246" y="404" width="56" height="56" rx="18" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="252" y="410" width="44" height="38" rx="13" fill="#12171C"/>
+    <path d="M263,410 H285 A9,9 0 0 1 294,419 V423 H254 V419 A9,9 0 0 1 263,410 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M264,426 h5 l7,-6 v22 l-7,-6 h-5 z" fill="#FFF9EA"/>
+    <path d="M280,424 a8,8 0 0 1 0,14" fill="none" stroke="#D7F900" stroke-width="3" stroke-linecap="round"/>
+    <text x="274" y="480" text-anchor="middle" class="cap">SOUND ON</text>
+  </g>
+
+  <!-- Sound off -->
+  <g id="ico-sound-off">
+    <rect x="342" y="404" width="56" height="56" rx="18" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="348" y="410" width="44" height="38" rx="13" fill="#12171C"/>
+    <path d="M359,410 H381 A9,9 0 0 1 390,419 V423 H350 V419 A9,9 0 0 1 359,410 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M356,426 h5 l7,-6 v22 l-7,-6 h-5 z" fill="#FFF9EA" fill-opacity="0.45"/>
+    <path d="M374,426 l12,12 M386,426 l-12,12" stroke="#FF4B26" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="370" y="480" text-anchor="middle" class="cap">MUTED</text>
+  </g>
+
+  <!-- Quit -->
+  <g id="ico-quit">
+    <rect x="438" y="404" width="56" height="56" rx="18" fill="#7A1C0A" stroke="#000" stroke-width="5"/>
+    <rect x="444" y="410" width="44" height="38" rx="13" fill="#FF4B26"/>
+    <path d="M455,410 H477 A9,9 0 0 1 486,419 V423 H446 V419 A9,9 0 0 1 455,410 Z" fill="#FFF9EA" fill-opacity="0.3"/>
+    <path d="M466,421 v14" stroke="#FFF9EA" stroke-width="4" stroke-linecap="round"/>
+    <path d="M458,424 a11,11 0 1 0 16,0" fill="none" stroke="#FFF9EA" stroke-width="4" stroke-linecap="round"/>
+    <text x="466" y="480" text-anchor="middle" class="cap">QUIT</text>
+  </g>
+
+  <!-- Replay -->
+  <g id="ico-replay">
+    <rect x="534" y="404" width="56" height="56" rx="18" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="540" y="410" width="44" height="38" rx="13" fill="#12171C"/>
+    <path d="M551,410 H573 A9,9 0 0 1 582,419 V423 H542 V419 A9,9 0 0 1 551,410 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M570,431 a10,10 0 1 1 -3,-7" fill="none" stroke="#FFF9EA" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M569,417 v7 h-7" fill="none" stroke="#FFF9EA" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="562" y="480" text-anchor="middle" class="cap">REPLAY</text>
+  </g>
+
+  <!-- Emote -->
+  <g id="ico-emote">
+    <rect x="630" y="404" width="56" height="56" rx="18" fill="#A83564" stroke="#000" stroke-width="5"/>
+    <rect x="636" y="410" width="44" height="38" rx="13" fill="#FF6FA8"/>
+    <path d="M647,410 H669 A9,9 0 0 1 678,419 V423 H638 V419 A9,9 0 0 1 647,410 Z" fill="#FFF9EA" fill-opacity="0.3"/>
+    <circle cx="652" cy="427" r="2.6" fill="#0B0F14"/>
+    <circle cx="664" cy="427" r="2.6" fill="#0B0F14"/>
+    <path d="M650,434 q8,7 16,0" fill="none" stroke="#0B0F14" stroke-width="3" stroke-linecap="round"/>
+    <text x="658" y="480" text-anchor="middle" class="cap">EMOTE</text>
+  </g>
+
+  <!-- Stats -->
+  <g id="ico-stats">
+    <rect x="726" y="404" width="56" height="56" rx="18" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="732" y="410" width="44" height="38" rx="13" fill="#12171C"/>
+    <path d="M743,410 H765 A9,9 0 0 1 774,419 V423 H734 V419 A9,9 0 0 1 743,410 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <rect x="742" y="432" width="6" height="10" fill="#4FB8C9"/>
+    <rect x="751" y="426" width="6" height="16" fill="#D7F900"/>
+    <rect x="760" y="421" width="6" height="21" fill="#FF6FA8"/>
+    <text x="754" y="480" text-anchor="middle" class="cap">STATS</text>
+  </g>
+
+  <!-- ================= ROW 3 · TOGGLES & STEPPERS ================= -->
+  <text x="48" y="538" class="body" font-weight="800" font-size="13" letter-spacing="2" fill="#D7F900">TOGGLES, STEPPERS &amp; SEGMENTS</text>
+
+  <!-- Toggle ON -->
+  <g id="toggle-on">
+    <rect x="48" y="562" width="92" height="46" rx="23" fill="#3E5C00" stroke="#000" stroke-width="5"/>
+    <rect x="54" y="568" width="80" height="30" rx="15" fill="#6B7A00"/>
+    <circle cx="116" cy="584" r="17" fill="#8CA300" stroke="#000" stroke-width="4"/>
+    <circle cx="116" cy="581" r="13" fill="#D7F900"/>
+    <path d="M105,577 A13,13 0 0 1 127,577 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <text x="94" y="630" text-anchor="middle" class="cap">TOGGLE ON</text>
+  </g>
+
+  <!-- Toggle OFF -->
+  <g id="toggle-off">
+    <rect x="176" y="562" width="92" height="46" rx="23" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="182" y="568" width="80" height="30" rx="15" fill="#12171C"/>
+    <circle cx="200" cy="584" r="17" fill="#2A333B" stroke="#000" stroke-width="4"/>
+    <circle cx="200" cy="581" r="13" fill="#5A6672"/>
+    <text x="222" y="630" text-anchor="middle" class="cap">TOGGLE OFF</text>
+  </g>
+
+  <!-- Stepper -->
+  <g id="stepper">
+    <circle cx="330" cy="584" r="24" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="330" cy="581" r="18" fill="#12171C"/>
+    <path d="M314,576 A18,18 0 0 1 346,576 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <path d="M321,581 h18" stroke="#FFF9EA" stroke-width="4.5" stroke-linecap="round"/>
+
+    <rect x="364" y="566" width="72" height="36" rx="12" fill="#050709" stroke="#000" stroke-width="4"/>
+    <rect x="369" y="571" width="62" height="22" rx="8" fill="#12171C"/>
+    <text x="400" y="589" text-anchor="middle" class="mono" font-weight="700" font-size="16" fill="#FFF9EA">3</text>
+
+    <circle cx="470" cy="584" r="24" fill="#6B7A00" stroke="#000" stroke-width="5"/>
+    <circle cx="470" cy="581" r="18" fill="#D7F900"/>
+    <path d="M454,576 A18,18 0 0 1 486,576 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <path d="M461,581 h18 M470,572 v18" stroke="#0B0F14" stroke-width="4.5" stroke-linecap="round"/>
+    <text x="400" y="630" text-anchor="middle" class="cap">STEPPER − / VALUE / +</text>
+  </g>
+
+  <!-- Segmented -->
+  <g id="segmented">
+    <rect x="546" y="560" width="306" height="48" rx="20" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="552" y="566" width="294" height="32" rx="16" fill="#12171C"/>
+    <rect x="556" y="568" width="96" height="34" rx="14" fill="#6B7A00" stroke="#000" stroke-width="3"/>
+    <rect x="560" y="571" width="88" height="22" rx="11" fill="#D7F900"/>
+    <path d="M571,571 H637 A11,11 0 0 1 648,582 V585 H560 V582 A11,11 0 0 1 571,571 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <text x="604" y="588" text-anchor="middle" class="display" font-size="14" fill="#0B0F14">ALL</text>
+    <text x="700" y="590" text-anchor="middle" class="display" font-size="14" fill="#FFF9EA" fill-opacity="0.6">PADDLES</text>
+    <text x="800" y="590" text-anchor="middle" class="display" font-size="14" fill="#FFF9EA" fill-opacity="0.6">SHOES</text>
+    <text x="699" y="630" text-anchor="middle" class="cap">SEGMENTED CONTROL</text>
+  </g>
+
+  <!-- ================= ROW 4 · SPECIAL ================= -->
+  <text x="48" y="696" class="body" font-weight="800" font-size="13" letter-spacing="2" fill="#D7F900">SPECIAL STATES</text>
+
+  <!-- Locked CTA -->
+  <g id="cta-locked">
+    <rect x="48" y="716" width="260" height="76" rx="26" fill="#0E1216" stroke="#000" stroke-width="6"/>
+    <rect x="56" y="724" width="244" height="52" rx="20" fill="#1A2027"/>
+    <path d="M143,750 h16 v-6 a8,8 0 0 0 -16,0 z" fill="none" stroke="#FFF9EA" stroke-opacity="0.35" stroke-width="3"/>
+    <rect x="141" y="750" width="20" height="14" rx="3" fill="#FFF9EA" fill-opacity="0.35"/>
+    <text x="196" y="757" class="display" font-size="17" fill="#FFF9EA" fill-opacity="0.35">RANK 15</text>
+    <text x="178" y="814" text-anchor="middle" class="cap">LOCKED CTA · no sheen, flat</text>
+  </g>
+
+  <!-- Cost CTA -->
+  <g id="cta-cost">
+    <rect x="336" y="716" width="260" height="76" rx="26" fill="#6B7A00" stroke="#000" stroke-width="6"/>
+    <rect x="344" y="724" width="244" height="52" rx="20" fill="#D7F900"/>
+    <path d="M358,724 H574 A14,14 0 0 1 588,738 V746 H344 V738 A14,14 0 0 1 358,724 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <text x="440" y="757" text-anchor="middle" class="display" font-size="19" fill="#0B0F14">UNLOCK</text>
+    <circle cx="512" cy="750" r="12" fill="#8A6A00" stroke="#000" stroke-width="3"/>
+    <circle cx="512" cy="748" r="8" fill="#F7C948"/>
+    <text x="534" y="756" class="mono" font-weight="700" font-size="15" fill="#0B0F14">250</text>
+    <text x="466" y="814" text-anchor="middle" class="cap">CTA WITH COST · price lives inside</text>
+  </g>
+
+  <!-- Loading CTA -->
+  <g id="cta-loading">
+    <rect x="624" y="716" width="228" height="76" rx="26" fill="#3E5C00" stroke="#000" stroke-width="6"/>
+    <rect x="632" y="724" width="212" height="52" rx="20" fill="#6B7A00"/>
+    <circle cx="700" cy="750" r="11" fill="none" stroke="#D7F900" stroke-width="4" stroke-dasharray="34 18"/>
+    <text x="758" y="757" text-anchor="middle" class="display" font-size="17" fill="#D7F900">FINDING…</text>
+    <text x="738" y="814" text-anchor="middle" class="cap">LOADING CTA · dimmed, spinner</text>
+  </g>
+
+  <!-- ================= ROW 5 · BADGED & FAB ================= -->
+  <g id="ico-badged">
+    <rect x="54" y="854" width="56" height="56" rx="18" fill="#050709" stroke="#000" stroke-width="5"/>
+    <rect x="60" y="860" width="44" height="38" rx="13" fill="#12171C"/>
+    <path d="M71,860 H93 A9,9 0 0 1 102,869 V873 H62 V869 A9,9 0 0 1 71,860 Z" fill="#FFF9EA" fill-opacity="0.12"/>
+    <rect x="72" y="874" width="20" height="15" fill="#FFF9EA"/>
+    <path d="M72,874 l10,8 10,-8" fill="none" stroke="#12171C" stroke-width="2.5"/>
+    <circle cx="110" cy="856" r="14" fill="#7A1C0A" stroke="#000" stroke-width="4"/>
+    <circle cx="110" cy="853" r="10" fill="#FF4B26"/>
+    <text x="110" y="858" text-anchor="middle" class="display" font-size="11" fill="#FFF9EA">3</text>
+    <text x="88" y="930" text-anchor="middle" class="cap">INBOX + BADGE</text>
+  </g>
+
+  <g id="ico-avatar">
+    <circle cx="200" cy="882" r="28" fill="#050709" stroke="#000" stroke-width="5"/>
+    <circle cx="200" cy="878" r="22" fill="#0F4C5C"/>
+    <path d="M178,872 A22,22 0 0 1 222,872 Z" fill="#FFF9EA" fill-opacity="0.15"/>
+    <circle cx="200" cy="872" r="8" fill="#FFF9EA"/>
+    <path d="M188,893 c3,-9 21,-9 24,0 z" fill="#FFF9EA"/>
+    <circle cx="218" cy="898" r="14" fill="#8A6A00" stroke="#000" stroke-width="4"/>
+    <circle cx="218" cy="895" r="10" fill="#F7C948"/>
+    <text x="218" y="900" text-anchor="middle" class="display" font-size="11" fill="#0B0F14">12</text>
+    <text x="204" y="930" text-anchor="middle" class="cap">AVATAR + RANK</text>
+  </g>
+
+  <g id="ico-fab">
+    <circle cx="312" cy="882" r="34" fill="#6B7A00" stroke="#000" stroke-width="6"/>
+    <circle cx="312" cy="877" r="27" fill="#D7F900"/>
+    <path d="M285,870 A27,27 0 0 1 339,870 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <ellipse cx="306" cy="874" rx="9" ry="12" fill="#0B0F14"/>
+    <rect x="303" y="884" width="6" height="9" rx="2" fill="#0B0F14"/>
+    <circle cx="324" cy="885" r="6" fill="#0B0F14"/>
+    <text x="312" y="936" text-anchor="middle" class="cap">FAB · PLAY</text>
+  </g>
+
+  <g id="chip-filter">
+    <rect x="384" y="864" width="118" height="40" rx="20" fill="#050709" stroke="#000" stroke-width="4"/>
+    <rect x="389" y="869" width="108" height="26" rx="13" fill="#12171C"/>
+    <text x="443" y="888" text-anchor="middle" class="body" font-weight="700" font-size="13" fill="#FFF9EA" fill-opacity="0.7">Rarity ▾</text>
+    <text x="443" y="930" text-anchor="middle" class="cap">DROPDOWN CHIP</text>
+
+    <rect x="522" y="864" width="106" height="40" rx="20" fill="#6B7A00" stroke="#000" stroke-width="4"/>
+    <rect x="527" y="869" width="96" height="26" rx="13" fill="#D7F900"/>
+    <path d="M539,869 H611 A13,13 0 0 1 624,882 V884 H527 V882 A13,13 0 0 1 539,869 Z" fill="#FFF9EA" fill-opacity="0.4"/>
+    <text x="575" y="888" text-anchor="middle" class="body" font-weight="800" font-size="13" fill="#0B0F14">Epic ✕</text>
+    <text x="575" y="930" text-anchor="middle" class="cap">ACTIVE FILTER</text>
+  </g>
+
+  <g id="ico-equip">
+    <rect x="656" y="860" width="88" height="48" rx="18" fill="#0A3540" stroke="#000" stroke-width="5"/>
+    <rect x="662" y="866" width="76" height="30" rx="13" fill="#0F4C5C"/>
+    <path d="M674,866 H726 A11,11 0 0 1 737,877 V881 H663 V877 A11,11 0 0 1 674,866 Z" fill="#FFF9EA" fill-opacity="0.2"/>
+    <text x="700" y="887" text-anchor="middle" class="display" font-size="14" fill="#FFF9EA">EQUIP</text>
+    <text x="700" y="930" text-anchor="middle" class="cap">TERTIARY · court blue</text>
+  </g>
+
+  <g id="ico-equipped">
+    <rect x="764" y="860" width="88" height="48" rx="18" fill="#0E1216" stroke="#000" stroke-width="5"/>
+    <rect x="770" y="866" width="76" height="30" rx="13" fill="#1A2027"/>
+    <path d="M786,880 l5,5 10,-11" fill="none" stroke="#D7F900" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="820" y="886" text-anchor="middle" class="body" font-weight="700" font-size="12" fill="#D7F900">ON</text>
+    <text x="808" y="930" text-anchor="middle" class="cap">EQUIPPED · confirmed</text>
+  </g>
+
+  <!-- ================= SPEC ================= -->
+  <line x1="48" y1="966" x2="852" y2="966" stroke="#0F4C5C" stroke-width="2"/>
+  <text x="48" y="1000" class="body" font-weight="800" font-size="13" letter-spacing="2" fill="#D7F900">SPEC</text>
+  <text x="48" y="1030" class="body" font-size="13" fill="#FFF9EA">· Circular icon buttons 52px (r26/20, wall 12). Square icon buttons 56px (r18/13, wall 12). FAB 68px (r34/27, wall 14).</text>
+  <text x="48" y="1054" class="body" font-size="13" fill="#FFF9EA">· Colour by intent — DARK PANEL for neutral utility (back, settings, menu, info, stats) · VOLT for forward/confirm · BLAZE for destructive (close, quit) · COURT BLUE for tertiary · BUBBLEGUM for social.</text>
+  <text x="48" y="1078" class="body" font-size="13" fill="#FFF9EA">· Dark utility buttons keep a 12% sheen so they still read as pressable; volt uses 40%, blaze 30%, court 20%.</text>
+  <text x="48" y="1102" class="body" font-size="13" fill="#FFF9EA">· Badges (count, rank) always straddle the outer edge at the top-right or bottom-right. Never inside the face.</text>
+  <text x="48" y="1126" class="body" font-size="13" fill="#FFF9EA">· Toggles: the knob is its own mini stack (base + face + sheen) so it reads as a physical switch. OFF loses all colour and sheen.</text>
+  <text x="48" y="1150" class="body" font-size="13" fill="#FFF9EA" fill-opacity="0.65">· Icon strokes 4–4.5px round-capped at 52px. Never thinner than 3px at any size — thin strokes break the style instantly.</text>
+</svg>

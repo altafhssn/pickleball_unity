@@ -105,3 +105,12 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Pickle Smash: build outputs, scratch project copies and editor-generated captures.
+/output/
+/tmp/
+/dev/
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta
+/[Aa]ssets/Screenshots/
+/[Aa]ssets/Screenshots.meta
