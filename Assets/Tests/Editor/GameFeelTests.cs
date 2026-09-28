@@ -52,6 +52,33 @@ namespace Pickleball.Tests
             Assert.That(ShotSim.GesturePower(300, 2), Is.LessThan(ShotSim.GesturePower(300, 0.5f)));
         }
 
+        [TestCase(30)]
+        [TestCase(60)]
+        [TestCase(120)]
+        public void SmallOneFrameFlickStaysSoft(int sampleRate)
+        {
+            Assert.That(ShotSim.GesturePower(12f, 1f / sampleRate), Is.LessThanOrEqualTo(0.05f));
+            Assert.That(ShotSim.GesturePower(50f, 1f / sampleRate), Is.LessThan(0.25f));
+        }
+
+        [Test]
+        public void IncreasingSwipeLengthGivesUsablePowerRange()
+        {
+            float small = ShotSim.GesturePower(60f, 0.04f);
+            float medium = ShotSim.GesturePower(120f, 0.08f);
+            float full = ShotSim.GesturePower(240f, 0.16f);
+            Assert.That(small, Is.InRange(0.2f, 0.3f));
+            Assert.That(medium, Is.InRange(0.45f, 0.55f));
+            Assert.That(full, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void SpeedTuningCannotMakeShortSwipesFullPower()
+        {
+            Assert.That(ShotSim.GesturePower(50f, 0.01f, 200f), Is.LessThan(0.25f));
+            Assert.That(ShotSim.GesturePower(240f, 0.4f, 1200f), Is.LessThan(1f));
+        }
+
         [TestCase(0)]
         [TestCase(1)]
         public void ReplannedBounceStaysReachableBeforeSecondBounce(int side)

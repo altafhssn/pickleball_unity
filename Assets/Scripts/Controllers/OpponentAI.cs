@@ -198,7 +198,6 @@ namespace Pickleball.Gameplay
                 else
                 {
                     targetMovePosition = transform.position;
-                    moveVelocity = Vector3.zero;
                 }
             }
             if (isMoving && (!awaitingHit || Time.time >= movementStartTime))

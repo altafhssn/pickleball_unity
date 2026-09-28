@@ -31,30 +31,23 @@ namespace Pickleball.Systems
 
         public void OnBallHit(Vector3 hitPos, ShotData shotData)
         {
-            // Emphasis effects (slow-mo, punch zoom) are the *player's* skill payoff -- an AI shot,
-            // which is Perfect by default on its serve, shouldn't freeze the game. A light shake
-            // still fires for both sides so every contact has weight.
+            // Hits keep a continuous rally speed and camera framing. Haptics and local impact
+            // effects communicate contact without interrupting the next aim gesture.
             bool isPlayerShot = shotData.hitterId == 0;
             bool softShot = shotData.shotType == ShotType.Dink || shotData.shotType == ShotType.Lob;
             bool putAway = shotData.shotType == ShotType.Smash;
 
             if (cameraController != null)
             {
-                float shakeIntensity = softShot ? 0.018f :
-                    Mathf.Lerp(0.035f, putAway ? 0.16f : 0.075f, shotData.compositeScore);
-                cameraController.Shake(shakeIntensity, putAway ? 0.12f : 0.07f);
+                // Keep the court steady during ordinary exchanges so the aim reference stays put.
+                if (putAway) cameraController.Shake(0.035f, 0.08f);
 
                 if (isPlayerShot && putAway && shotData.quality == ShotQuality.Perfect)
                 {
-                    TriggerHitStop(0.035f);
                     Haptics.Strong();
                 }
                 else if (isPlayerShot && !softShot && shotData.quality <= ShotQuality.Great) Haptics.Light();
 
-                if (isPlayerShot && putAway && (shotData.quality == ShotQuality.Great || shotData.quality == ShotQuality.Perfect))
-                {
-                    cameraController.PunchZoom(1.2f, 0.14f);
-                }
             }
 
             if (ImpactVFX.Instance != null)

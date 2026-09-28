@@ -1,5 +1,17 @@
 # Pickleball game-feel pass
 
+## Control stability pass (2026-09-26)
+
+Power follow-up: gesture power is now capped by stroke length (240 reference pixels for full power) as well as speed. Previously a 50-pixel swipe in one frame saturated the speed-only calculation. It now produces at most 21% power; 120 reference pixels tops out at 50%. Preview and release use the same calculation. Speed tuning does not scale away the distance cap. All 114 EditMode tests passed, including short single-frame swipes at 30/60/120 Hz and graded short/medium/full power.
+
+- A pause followed by an aim correction retains the original meaningful stroke's origin. A leftward correction to a rightward swipe no longer sends the ball left while the finger remains right of the origin. Interior holds are excluded from gesture speed.
+- Screen-left/right always aims court-left/right, independent of the saved handedness preference. Removed the old direction-reversing handedness toggle from Settings; existing save data remains compatible.
+- The trajectory refreshes after movement each frame and does not flash the previous swipe's line on touch-down.
+- Player and opponent contact tracking lets movement smoothing decelerate naturally instead of clearing velocity abruptly.
+- Ordinary hits no longer shake the camera; smashes have a small shake, with no hit-stop or rally punch zoom. Point-end presentation remains unchanged.
+
+Verification: Unity compiled without script errors; all 109 EditMode tests passed, including pause/correction direction and lift-off jitter at 30/60/120 samples per second. These checks establish control regressions, not measured rendering performance or human game feel. Phone touch playtesting and two-device PvP remain unverified.
+
 ## Changes
 
 - Contact timing now follows a reachable interception or the rising bounce. The opening returns no longer ask for a perfect swipe before the mandatory bounce.

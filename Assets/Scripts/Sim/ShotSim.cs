@@ -29,11 +29,16 @@ namespace Pickleball.Sim
     /// </summary>
     public static class ShotSim
     {
-        /// <summary>Physical gesture speed controls strength; holding longer never charges a shot.</summary>
-        public static float GesturePower(float referenceDistance, float seconds)
+        /// <summary>Full power requires both a deliberate stroke length and speed. A short
+        /// one-frame flick must stay soft, regardless of its apparent speed. Distances are in
+        /// DPI- and sensitivity-adjusted reference pixels; holding never charges a shot.</summary>
+        public static float GesturePower(float referenceDistance, float seconds, float fullPowerSwipeSpeed = 1200f)
         {
-            float speed = referenceDistance / SimMath.Max(0.01f, seconds);
-            return SimMath.Clamp01(speed / 1200f);
+            float distance = SimMath.Max(0f, referenceDistance);
+            float distancePower = SimMath.Clamp01(distance / 240f);
+            float speed = distance / SimMath.Max(0.01f, seconds);
+            float speedPower = SimMath.Clamp01(speed / SimMath.Max(1f, fullPowerSwipeSpeed));
+            return Math.Min(distancePower, speedPower);
         }
         /// <summary>How far past the net (in Z) a ball must land to count as in. bounds.min.Y is 0.5,
         /// which the fault check used directly -- so a legal, tightly-placed dink landing 0.1-0.5 past

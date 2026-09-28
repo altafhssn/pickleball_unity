@@ -70,7 +70,7 @@ namespace Pickleball.Gameplay
         private float GestureScale => dpiScale * SensScale;
 
         private float PowerFor(System.Numerics.Vector2 referenceDelta, float duration) => Sim.ShotSim.GesturePower(
-            referenceDelta.Length() * (1200f / Mathf.Max(1f, fullPowerSwipeSpeed)), duration);
+            referenceDelta.Length(), duration, fullPowerSwipeSpeed);
 
         private void Update()
         {
@@ -148,7 +148,8 @@ namespace Pickleball.Gameplay
             if (stroke.LengthSquared() < 0.0001f) return Vector2.zero;
             System.Numerics.Vector2 direction = Sim.SwipeGesture.AimDirection(stroke);
             float magnitude = PowerFor(stroke, Mathf.Max(0.01f, seconds));
-            return ApplyHandedness(new Vector2(direction.X, direction.Y) * magnitude);
+            // Screen-left always means court-left, whichever hand holds the device.
+            return new Vector2(direction.X, direction.Y) * magnitude;
         }
 
         /// <summary>The rally shot a stroke plays, given where the ball will be met.</summary>
@@ -169,14 +170,6 @@ namespace Pickleball.Gameplay
                 ? ShotType.Serve : RallyShotFor(stroke, seconds);
             OnShotTypePreview?.Invoke(CurrentPreviewShot);
             OnSwipeUpdate?.Invoke(CurrentSwipeVector);
-        }
-
-        /// <summary>Left-handed mode (Settings) mirrors the horizontal aim so the same thumb motion
-        /// sends the ball to the mirror-image side of the court. Vertical (power / arc) is untouched.
-        /// Was persisted and read by nothing.</summary>
-        private static Vector2 ApplyHandedness(Vector2 v)
-        {
-            return MetaGameState.LeftHanded ? new Vector2(-v.x, v.y) : v;
         }
 
         private void EndSwipe(Vector2 pos)

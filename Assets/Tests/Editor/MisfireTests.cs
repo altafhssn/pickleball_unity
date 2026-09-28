@@ -250,6 +250,37 @@ namespace Pickleball.Tests
             Assert.That(stroke.Length(), Is.LessThan(MinSwipe));
         }
 
+        [Test]
+        public void CorrectionAfterHoldingKeepsTheOriginalAimOrigin()
+        {
+            Measure(Touch((120f, 150f, 0.15f), (0f, 0f, 0.3f), (-60f, 30f, 0.08f)),
+                out Vector2 stroke, out float seconds);
+            // The final thumb position is still right of the origin. The correction alone
+            // points left, which previously sent the shot to the opposite side of the court.
+            Assert.That(stroke.X, Is.EqualTo(60f).Within(SwipeGesture.RestRadius));
+            Assert.That(stroke.Y, Is.EqualTo(180f).Within(SwipeGesture.RestRadius));
+            Assert.That(seconds, Is.LessThan(0.28f));
+            Assert.That(AimedX(stroke), Is.GreaterThan(0f));
+        }
+
+        [TestCase(30)]
+        [TestCase(60)]
+        [TestCase(120)]
+        public void LiftOffJitterDoesNotReverseAimAtDifferentFrameRates(int fps)
+        {
+            var touch = new List<SwipeSample>();
+            for (int i = 0; i <= fps; i++)
+            {
+                float t = i / (float)fps;
+                float progress = Math.Min(t / 0.2f, 1f);
+                touch.Add(new SwipeSample(new Vector2(90f, 150f) * progress, t));
+            }
+            touch.Add(new SwipeSample(new Vector2(88f, 151f), 1.01f));
+            Measure(touch, out Vector2 stroke, out float seconds);
+            Assert.That(stroke.X, Is.EqualTo(90f).Within(SwipeGesture.RestRadius));
+            Assert.That(seconds, Is.EqualTo(0.2f).Within(1f / fps));
+        }
+
         // ---------------------------------------------------------------- aim vs shot type
 
         private static Vector2 Stroke(float degreesOffVertical, float length = 200f, bool down = false)

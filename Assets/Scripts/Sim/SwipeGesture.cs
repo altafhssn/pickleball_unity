@@ -43,12 +43,9 @@ namespace Pickleball.Sim
         public const float SmashMinHeight = 1.7f;
 
         /// <summary>
-        /// The deliberate stroke within a touch: from the last moment the finger was resting to the
-        /// moment it reached the point it was lifted from. Measuring from touch-down instead counted
-        /// any time the thumb rested on the glass waiting for the ball as part of the swing, so a fast
-        /// flick after a short rest read as a slow push -- a weak shot, usually classified as a Lob.
-        /// Falls back to the whole touch when the last stroke alone is shorter than
-        /// <paramref name="minDistance"/>, so nothing that registered as a swipe before stops registering.
+        /// Measures the deliberate stroke, excluding preparation and holds. Once a meaningful stroke
+        /// starts, retain its origin through pauses and aim corrections. Falls back to the whole
+        /// touch for slow gestures shorter than <paramref name="minDistance"/> after trimming.
         /// </summary>
         public static void MeasureStroke(IReadOnlyList<SwipeSample> samples, float minDistance,
             out Vector2 delta, out float seconds)
@@ -66,10 +63,33 @@ namespace Pickleball.Sim
             if (end == 0) return;
 
             int begin = end - 1;
-            while (begin > 0 && !IsResting(samples, begin)) begin--;
+            while (begin > 0)
+            {
+                // A pause before the first stroke is preparation. A pause after a meaningful
+                // stroke is aiming: retain that origin so a correction cannot flip direction.
+                if (IsResting(samples, begin) &&
+                    Vector2.Distance(samples[begin].Position, samples[0].Position) < minDistance) break;
+                begin--;
+            }
 
             delta = samples[end].Position - samples[begin].Position;
             seconds = samples[end].Time - samples[begin].Time;
+            // Remove interior holds as well as the lift-off hold. Keeping the full path for
+            // direction must not turn a drive into a weak lob when the thumb pauses to aim.
+            for (int i = begin; i < end; i++)
+            {
+                int restEnd = i;
+                while (restEnd < end &&
+                    Vector2.Distance(samples[restEnd + 1].Position, samples[i].Position) <= RestRadius)
+                    restEnd++;
+                float rest = samples[restEnd].Time - samples[i].Time;
+                if (rest >= RestSeconds &&
+                    Vector2.Distance(samples[i].Position, samples[begin].Position) >= minDistance)
+                {
+                    seconds -= rest;
+                    i = restEnd;
+                }
+            }
             if (delta.Length() < minDistance)
             {
                 Vector2 whole = samples[end].Position - samples[0].Position;

@@ -15,7 +15,7 @@ namespace Pickleball.UI
     ///
     /// The board names four rows — Sound Effects, Music, Notifications, Vibration. The previous
     /// screen carried more than that and all of it is still here, because none of it is decorative:
-    /// swipe sensitivity and left-handed change how the game plays, and the name field is the only
+    /// swipe sensitivity changes how the game plays, and the name field is the only
     /// way to tell two installs apart in PvP. They are restyled into the board's row form rather
     /// than dropped.
     ///
@@ -89,9 +89,8 @@ namespace Pickleball.UI
             GameObject extra = UIBuilder.Child("AdvancedSettings", content);
             UIBuilder.StretchRect(extra, new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0, -UITheme.F(670f)), new Vector2(0, -UITheme.F(410f)));
-            float extraY = ToggleRow(extra.transform, 0f, "Left-handed", MetaGameState.LeftHanded,
-                delegate (bool on) { MetaGameState.LeftHanded = on; });
-            extraY = SliderRow(extra.transform, extraY, "Swipe sensitivity", MetaGameState.SwipeSensitivity,
+            // Aiming uses screen direction for either hand; the old handedness switch inverted it.
+            float extraY = SliderRow(extra.transform, 0f, "Swipe sensitivity", MetaGameState.SwipeSensitivity,
                 delegate (float v) { MetaGameState.SwipeSensitivity = v; });
             extraY = NameRow(extra.transform, extraY);
             ValueRow(extra.transform, extraY, "Player ID", FormatGuestId(), false);

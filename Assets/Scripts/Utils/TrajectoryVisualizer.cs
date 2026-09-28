@@ -63,9 +63,8 @@ namespace Pickleball.Utils
 
         private void HandleSwipeStart()
         {
-            previewShot = ShotType.Flat;
-            if (lineRenderer != null) lineRenderer.enabled = true;
-            if (landingTargetIndicator != null) landingTargetIndicator.gameObject.SetActive(true);
+            // Do not flash the previous gesture's line before this one has an aim.
+            HandleSwipeEnd(Vector2.zero, 0f);
         }
 
         private void HandleSwipeUpdate(Vector2 swipeVector)
@@ -120,9 +119,15 @@ namespace Pickleball.Utils
 
         private void LateUpdate()
         {
-            if (InputManager.Instance != null && (!InputManager.Instance.IsSwiping ||
-                (RallyManager.Instance != null && !RallyManager.Instance.CanSideHit(0))))
+            var input = InputManager.Instance;
+            if (input == null || !input.IsSwiping || input.CurrentSwipeVector.sqrMagnitude < 0.001f ||
+                (RallyManager.Instance != null && !RallyManager.Instance.CanSideHit(0)))
                 HandleSwipeEnd(Vector2.zero, 0f);
+            else
+            {
+                previewShot = input.CurrentPreviewShot;
+                HandleSwipeUpdate(input.CurrentSwipeVector);
+            }
         }
 
         private static Color PreviewColor(ShotType type)
