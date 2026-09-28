@@ -1,4 +1,4 @@
-using UnityEngine;
+using Pickleball.Sim;
 
 namespace Pickleball.Data
 {
@@ -14,59 +14,35 @@ namespace Pickleball.Data
         public bool hasPerformanceBonus;
     }
 
+    /// <summary>Applies the engine-free rules in <see cref="MatchModes"/> to a tour stage. Practice
+    /// matches pay nothing; see MatchModes for why.</summary>
     public static class MatchRewards
     {
-        /// <param name="tour">The tour stage played, or null for a ranked match.</param>
-        /// <param name="localTrophies">The player's trophy count going in (for the ranked Elo delta).</param>
-        /// <param name="opponentTrophies">Opponent's trophy count (ranked only; 0 if unknown).</param>
+        /// <param name="tour">The tour stage played. Ignored for practice.</param>
         /// <param name="playerPerfects">Perfect-quality shots the player landed this match.</param>
         /// <param name="longestRally">Longest rally (total shots) this match.</param>
-        public static MatchReward Compute(bool won, TourInfo tour, int localTrophies, int opponentTrophies,
+        public static MatchReward Compute(MatchMode mode, bool won, TourInfo tour,
             int playerScore, int opponentScore, int playerPerfects, int longestRally)
         {
-            MatchReward r = new MatchReward();
-            int margin = Mathf.Abs(playerScore - opponentScore);
+            return From(MatchModes.Payout(mode, won, tour != null ? tour.rewardCoins : 0,
+                tour != null ? tour.rewardTrophies : 0, playerScore, opponentScore, playerPerfects, longestRally));
+        }
 
-            if (tour != null)
-            {
-                // Tour: pay the stage's own advertised reward, scaled slightly by how convincing the
-                // win was. A loss costs roughly half the stage's trophy value, never a flat 19.
-                if (won)
-                {
-                    float dominance = 1f + Mathf.Clamp01((margin - 2) / 6f) * 0.25f; // up to +25% for a 4+ margin
-                    r.coins = Mathf.RoundToInt(Mathf.Max(1, tour.rewardCoins) * dominance);
-                    r.trophies = Mathf.Max(1, tour.rewardTrophies);
-                }
-                else
-                {
-                    r.coins = 0;
-                    r.trophies = -Mathf.RoundToInt(Mathf.Max(1, tour.rewardTrophies) * 0.55f);
-                }
-            }
-            else
-            {
-                // Ranked: Elo-style trophy swing so beating a stronger opponent is worth more and
-                // losing to a weaker one hurts more, instead of a flat +28 / -19.
-                float expected = 1f / (1f + Mathf.Pow(10f, (opponentTrophies - localTrophies) / 400f));
-                float actual = won ? 1f : 0f;
-                int swing = Mathf.RoundToInt(34f * (actual - expected));
-                r.trophies = won ? Mathf.Clamp(swing, 8, 40) : Mathf.Clamp(swing, -40, -8);
-                r.coins = won ? Mathf.RoundToInt(170 * (1f + Mathf.Clamp01((margin - 2) / 6f) * 0.25f)) : 0;
-            }
+        public static MatchReward Forfeit(MatchMode mode, TourInfo tour, int playerScore, int opponentScore)
+        {
+            return From(MatchModes.ForfeitPayout(mode, tour != null ? tour.rewardTrophies : 0,
+                playerScore, opponentScore));
+        }
 
-            // Performance bonus (win only): rewards clean, long rallies rather than just showing up.
-            if (won)
+        private static MatchReward From(MatchPayout payout)
+        {
+            return new MatchReward
             {
-                int bonus = playerPerfects * 4 + (longestRally >= 8 ? 30 : 0);
-                if (bonus > 0)
-                {
-                    r.coins += bonus;
-                    r.hasPerformanceBonus = true;
-                }
-            }
-
-            r.seasonXp = won ? 40 + playerPerfects : 10;
-            return r;
+                coins = payout.Coins,
+                trophies = payout.Trophies,
+                seasonXp = payout.SeasonXp,
+                hasPerformanceBonus = payout.HasPerformanceBonus
+            };
         }
     }
 }

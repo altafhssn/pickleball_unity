@@ -14,7 +14,7 @@ namespace Pickleball.Gameplay
         [Header("AI Settings")]
         [SerializeField] private AIDifficulty difficulty = AIDifficulty.Medium;
         [Tooltip("0 = a beginner who is slow, mistimes, and shanks shots; 1 = a near-perfect wall. " +
-                 "Set per match by ScreenManager from the tour stage / trophy count -- the Easy/Medium/Hard " +
+                 "Set per match by ScreenManager from the chosen practice level -- the Easy/Medium/Hard " +
                  "enum above only seeds a default.")]
         [SerializeField, Range(0f, 1f)] private float skill = 0.45f;
         [SerializeField] private Vector3 homePosition = new Vector3(0f, 1.0f, 6f);

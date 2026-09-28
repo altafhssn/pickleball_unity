@@ -93,7 +93,7 @@ namespace Pickleball.UI
             y += BuildBand(content, y, "DEMOTION — BOTTOM 2", UITheme.FillRivalRedBtnDeep, IconId.Play, -90f);
             content.sizeDelta = new Vector2(0, y + 8f);
 
-            UIBuilder.ButtonRefs playBtn = UIBuilder.GreenButton(safe, "PLAY RANKED", new Vector2(0, UITheme.ButtonHeight), UITheme.TypeButton, delegate { mgr.StartRankedMatchmaking(); });
+            UIBuilder.ButtonRefs playBtn = UIBuilder.GreenButton(safe, "CHOOSE TOUR", new Vector2(0, UITheme.ButtonHeight), UITheme.TypeButton, delegate { mgr.Show(ScreenId.TourSelect); });
             UIBuilder.StretchRect(playBtn.root, new Vector2(0f, 0f), new Vector2(1f, 0f),
                 new Vector2(UITheme.SpaceLg, UITheme.NavBarHeight + UITheme.CtaBottomGap), new Vector2(-UITheme.SpaceLg, CtaTop));
 

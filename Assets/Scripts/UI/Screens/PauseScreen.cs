@@ -96,7 +96,9 @@ namespace Pickleball.UI
 
             // Forfeit is the only irreversible thing on this screen, so it says what it costs and it
             // is the one control with no fill behind it — you have to mean it.
-            Text quit = PSKit.TextButton(host, "QUIT MATCH", UITheme.Crimson, 52,
+            Text quit = PSKit.TextButton(host,
+                mgr.CurrentMatchMode == Pickleball.Sim.MatchMode.Practice ? "LEAVE PRACTICE" : "QUIT MATCH",
+                UITheme.Crimson, 52,
                 delegate { mgr.ConfirmForfeit(); });
             CardRow(quit.transform.parent.gameObject, QuitY, 44f, 24f);
 

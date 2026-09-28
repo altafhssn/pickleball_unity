@@ -56,6 +56,9 @@ namespace Pickleball.UI
         private Text winLoseScoreText;
         private Text rewardCoinText;
         private Text rewardTrophyText;
+        private GameObject rewardCoinHost;
+        private GameObject rewardTrophyHost;
+        private Text practiceNoteText;
         private Transform modalPlayerPipsRoot;
         private Transform modalOpponentPipsRoot;
 
@@ -804,14 +807,22 @@ namespace Pickleball.UI
             UIBuilder.IconAt(tropHost.transform, IconId.Trophy, 44f, UITheme.GoldMid, UITheme.OutlineNavy, new Vector2(0.5f, 0.5f), new Vector2(-52, 0));
             rewardTrophyText = UIBuilder.StrokedText(tropHost.transform, "Text", TextAnchor.MiddleLeft, "+0", Color.white, 32);
             UIBuilder.Rect(rewardTrophyText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(-20, 0), new Vector2(150, 44));
+            rewardCoinHost = coinHost;
+            rewardTrophyHost = tropHost;
+
+            // Practice pays nothing, so the strip says so rather than showing "+0 / +0".
+            practiceNoteText = UIBuilder.StrokedText(rewards.transform, "PracticeNote", TextAnchor.MiddleCenter,
+                "PRACTICE  ·  NO REWARDS", UITheme.Cream, 32);
+            UIBuilder.Fill(practiceNoteText.gameObject);
+            practiceNoteText.gameObject.SetActive(false);
 
             // --- Actions ---
             // There was no way out of this modal except PLAY AGAIN: the result screen was a dead end
             // that could only be escaped by starting another match and then forfeiting it.
             UIBuilder.ButtonRefs playAgain = UIBuilder.GreenButton(card.transform, "PLAY AGAIN", new Vector2(0, UITheme.ButtonHeight), UITheme.TypeButton, delegate
             {
-                // Routed through ScreenManager so a tour rematch re-charges the entry fee, the same
-                // way the first attempt did. Ranked/PvP rematches stay free. Local restart is only a
+                // Routed through ScreenManager so a tour rematch is a new online search that
+                // re-charges the entry fee; practice restarts for free. Local restart is only a
                 // fallback for when the manager somehow isn't present.
                 if (ScreenManager.Instance != null)
                 {
@@ -984,7 +995,12 @@ namespace Pickleball.UI
             if (winLoseScoreText != null) winLoseScoreText.text = finalPlayer + " - " + finalOpponent;
 
             // The real payout ScreenManager.HandleMatchEnded computed and applied (tour reward table /
-            // Elo swing / performance bonus), not a hardcoded copy.
+            // performance bonus), not a hardcoded copy. Practice pays nothing and says so.
+            bool practice = ScreenManager.Instance == null ||
+                ScreenManager.Instance.CurrentMatchMode == Pickleball.Sim.MatchMode.Practice;
+            if (rewardCoinHost != null) rewardCoinHost.SetActive(!practice);
+            if (rewardTrophyHost != null) rewardTrophyHost.SetActive(!practice);
+            if (practiceNoteText != null) practiceNoteText.gameObject.SetActive(practice);
             MatchReward reward = MetaGameState.LastMatchReward;
             if (rewardCoinText != null)
             {
@@ -1000,8 +1016,8 @@ namespace Pickleball.UI
             RebuildModalPips(modalPlayerPipsRoot, finalPlayer, UITheme.TextPlayerBlue);
             RebuildModalPips(modalOpponentPipsRoot, finalOpponent, UITheme.TextRivalRed);
 
-            // A tour rematch costs the entry fee again -- show it on the button so the charge isn't a
-            // surprise. Ranked/PvP rematches are free and keep the plain label.
+            // A tour rematch is a new search that costs the entry fee again -- show it on the button so
+            // the charge isn't a surprise. Practice rematches are free and keep the plain label.
             if (playAgainLabel != null)
             {
                 int rematchFee = ScreenManager.Instance != null ? ScreenManager.Instance.PendingRematchFee : 0;

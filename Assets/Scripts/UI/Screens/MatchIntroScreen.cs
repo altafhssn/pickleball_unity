@@ -34,7 +34,10 @@ namespace Pickleball.UI
         private const float CountdownY = 681f;
         private const float DiscDiameter = 100f;
 
-        public static GameObject Build(Transform parent, ScreenManager mgr, string opponentName)
+        /// <param name="opponentRank">Under the opponent's name: their league for a live opponent,
+        /// the AI's level for practice.</param>
+        public static GameObject Build(Transform parent, ScreenManager mgr, string opponentName,
+            string opponentRank, bool practice)
         {
             GameObject root = UIBuilder.Child("MatchIntroScreen", parent);
             UIBuilder.Fill(root);
@@ -50,11 +53,12 @@ namespace Pickleball.UI
             Transform safe = UIBuilder.SafeArea(root.transform);
             GameObject board = PSKit.BoardHost(safe);
 
+            // Practice has no search, so nothing was "found".
             Text title = PSKit.Display(board.transform, "Title", TextAnchor.MiddleCenter,
-                "MATCH FOUND", UITheme.Volt, UITheme.TypeHeroTitle);
+                practice ? "PRACTICE MATCH" : "MATCH FOUND", UITheme.Volt, UITheme.TypeHeroTitle);
             PSKit.BoardRow(title.gameObject, TitleY, 70f, 20f);
             UIBuilder.ClampLine(title, 40);
-            UIReferenceArt.Title(title, "title_found", 218f, 21.3f);
+            if (!practice) UIReferenceArt.Title(title, "title_found", 218f, 21.3f);
 
             BuildSide(board.transform, YouDiscY, YouNameY, YouRankY, UITheme.Volt,
                 "YOU",
@@ -79,7 +83,7 @@ namespace Pickleball.UI
             }
 
             BuildSide(board.transform, RivalDiscY, RivalNameY, RivalRankY, UITheme.Bubblegum,
-                opponentName, ScreenManager.OpponentSkillLabel(ScreenManager.PredictOpponentSkill(false)));
+                opponentName, opponentRank);
 
             Text starting = PSKit.Display(board.transform, "Starting", TextAnchor.MiddleCenter,
                 "MATCH STARTING IN", UITheme.Cream, 42);

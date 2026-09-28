@@ -6,7 +6,8 @@ namespace Pickleball.UI
 {
     /// <summary>
     /// Screen 03 — tour select. A ladder you climb: cleared tours get a green tick, the live tour is
-    /// bigger with a gold rim, locked tours fade and state the trophy gate.
+    /// bigger with a gold rim, locked tours fade and state the trophy gate. Tour matches are played
+    /// online against live opponents; the AI is practice only.
     ///
     /// The list is the screen, so it stretches between the header and the CTA rather than sitting in
     /// a fixed-height window. (It also used to render nothing at all — see the RectMask2D note in
@@ -40,7 +41,7 @@ namespace Pickleball.UI
             }
             content.sizeDelta = new Vector2(0, y);
 
-            UIBuilder.ButtonRefs playBtn = UIBuilder.GreenButton(safe, "PLAY  ·  " + current.entryCoins + " COINS", new Vector2(0, UITheme.ButtonHeight), UITheme.TypeButton, delegate { mgr.StartMatchmaking(); });
+            UIBuilder.ButtonRefs playBtn = UIBuilder.GreenButton(safe, "PLAY ONLINE  ·  " + current.entryCoins + " COINS", new Vector2(0, UITheme.ButtonHeight), UITheme.TypeButton, delegate { mgr.StartTourMatch(); });
             UIBuilder.StretchRect(playBtn.root, new Vector2(0f, 0f), new Vector2(1f, 0f),
                 new Vector2(UITheme.SpaceLg, UITheme.NavBarHeight + UITheme.CtaBottomGap), new Vector2(-UITheme.SpaceLg, CtaTop));
             UIBuilder.ClampLine(playBtn.label);

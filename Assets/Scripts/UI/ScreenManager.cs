@@ -32,7 +32,8 @@ namespace Pickleball.UI
         Settings,
         Tutorial,
         SeasonComplete,
-        PlayMode, BagInventory, Account, Purchase, ProfileRecovery
+        PlayMode, BagInventory, Account, Purchase, ProfileRecovery,
+        Practice
     }
 
     /// <summary>
@@ -63,18 +64,41 @@ namespace Pickleball.UI
         private readonly Stack<ScreenId> backStack = new Stack<ScreenId>();
         private GearItem selectedGear;
         private GearType selectedGearType;
-        private bool matchmakingIsRanked;
+        /// <summary>The mode of the match being set up or played. Tours are online-only and practice
+        /// is the only way to play the AI -- see Sim.MatchModes.</summary>
+        private Sim.MatchMode matchMode = Sim.MatchMode.Practice;
         private INetworkTransport pendingMatchTransport;
         private MatchStartMessage pendingMatchStart;
         private bool pendingMatchIsPvP;
         private string pendingOpponentName = "R. VEGA";
+        private string pendingOpponentRank = "";
 
         /// <summary>Tour entry coins charged in RunPreMatchChecks but not yet "spent for real" -- the
         /// fee used to be taken the moment matchmaking began, and CANCEL / hardware-back on the
         /// matchmaking screen refunded nothing. Cleared to 0 once a match actually starts (EnterMatch);
         /// refunded in ExitMatchToLobby while still nonzero.</summary>
         private int pendingTourEntryFee;
-        private bool pendingPostTutorialRanked;
+        private Sim.MatchMode pendingPostTutorialMode;
+
+        private const string PracticeLevelKey = "ps_practice_level";
+
+        /// <summary>The AI level practice matches are played at. A per-device preference, so it
+        /// lives in PlayerPrefs rather than the synced profile.</summary>
+        public static Sim.PracticeLevel SelectedPracticeLevel
+        {
+            get
+            {
+                return (Sim.PracticeLevel)Mathf.Clamp(PlayerPrefs.GetInt(PracticeLevelKey, 0),
+                    0, (int)Sim.PracticeLevel.Elite);
+            }
+            set
+            {
+                PlayerPrefs.SetInt(PracticeLevelKey, (int)value);
+                PlayerPrefs.Save();
+            }
+        }
+
+        public Sim.MatchMode CurrentMatchMode => matchMode;
 
         private const int BaseSortOrder = 50;
         private const int PauseSortOrder = 150;
@@ -118,11 +142,13 @@ namespace Pickleball.UI
             {
                 EnterMatch();
             }
-            else if (System.Array.Exists(System.Environment.GetCommandLineArgs(), a => a == "-autorankedmatch"))
+            else if (System.Array.Exists(System.Environment.GetCommandLineArgs(),
+                a => a == "-autotourmatch" || a == "-autorankedmatch"))
             {
                 // QA hook for exercising real two-process PvP without manual UI navigation on a
-                // standalone build -- e.g. `Game.exe -autorankedmatch`. Never fires otherwise.
-                StartMatchmakingInternal(true);
+                // standalone build -- e.g. `Game.exe -autotourmatch`. Skips the entry fee. Never
+                // fires otherwise.
+                StartMatchmakingInternal(Sim.MatchMode.Tour);
             }
             else
             {
@@ -299,7 +325,14 @@ namespace Pickleball.UI
 
         public void ConfirmForfeit()
         {
-            ShowDecisionModal("QUIT MATCH?", "Leaving counts as a loss, with an additional 5-trophy penalty.",
+            if (matchMode == Sim.MatchMode.Practice)
+            {
+                ShowDecisionModal("LEAVE PRACTICE?", "Practice matches don't count, so nothing is lost.",
+                    "KEEP PLAYING", "LEAVE", ResumeFromPause, ForfeitMatch, IconId.Warn);
+                return;
+            }
+            ShowDecisionModal("QUIT MATCH?", "Leaving counts as a loss, with an additional " +
+                Sim.MatchModes.ForfeitSurcharge + "-trophy penalty.",
                 "KEEP PLAYING", "FORFEIT", ResumeFromPause, ForfeitMatch, IconId.Warn);
         }
 
@@ -311,9 +344,17 @@ namespace Pickleball.UI
 
         public void MatchmakingFailed()
         {
-            ShowDecisionModal("CAN'T FIND A MATCH", "Check your connection and try again, or choose a tour to play against the AI.",
-                "RETRY", "CHOOSE TOUR", () => { ExitMatchToLobby(); StartRankedMatchmaking(); },
-                () => { ExitMatchToLobby(); Show(ScreenId.TourSelect); }, IconId.Warn);
+            ShowDecisionModal("CAN'T FIND A MATCH", "Check your connection and try again, or practise against the AI. You won't be charged for a match that didn't start.",
+                "RETRY", "PRACTICE", () => { ExitMatchToLobby(); StartTourMatch(); },
+                PracticeInstead, IconId.Warn);
+        }
+
+        /// <summary>Leaves an online search (refunding the entry fee, see ExitMatchToLobby) for the
+        /// practice screen. Offered while a tour search is taking a while, and when one fails.</summary>
+        public void PracticeInstead()
+        {
+            ExitMatchToLobby();
+            Show(ScreenId.Practice);
         }
 
         public void ShowConnectionRecovery(bool local)
@@ -404,48 +445,45 @@ namespace Pickleball.UI
             Show(ScreenId.Lobby, false);
         }
 
-        /// <summary>Tour/campaign matches -- always against AI. See StartRankedMatchmaking for the
-        /// real-opponent path.</summary>
-        public void StartMatchmaking() => BeginPreMatchFlow(false);
+        /// <summary>A tour match: the current tour's entry fee, then a live opponent over Photon via
+        /// PhotonQuickMatch, landing on EnterPvPMatch once one is found. Tours are online-only.</summary>
+        public void StartTourMatch() => RunPreMatchChecks(Sim.MatchMode.Tour, false, false);
 
-        /// <summary>League's "PLAY RANKED" and the Lobby's main CTA: a real opponent over Photon via
-        /// PhotonQuickMatch, landing on EnterPvPMatch instead of EnterMatch once one is found.</summary>
-        public void StartRankedMatchmaking() => BeginPreMatchFlow(true);
+        /// <summary>A free practice match against the AI at <see cref="SelectedPracticeLevel"/>. No
+        /// search screen: there is nobody to search for.</summary>
+        public void StartPracticeMatch() => RunPreMatchChecks(Sim.MatchMode.Practice, false, false);
 
-        private void BeginPreMatchFlow(bool ranked)
+        private void RunPreMatchChecks(Sim.MatchMode mode, bool starterAccepted, bool bagAccepted)
         {
-            RunPreMatchChecks(ranked, false, false);
-        }
-
-        private void RunPreMatchChecks(bool ranked, bool starterAccepted, bool bagAccepted)
-        {
-            if (!starterAccepted && !bagAccepted && MetaGameState.HasStarterEquipment() &&
+            // The equipment and bag warnings are about what a match can win, and practice wins nothing.
+            bool stakes = mode == Sim.MatchMode.Tour;
+            if (stakes && !starterAccepted && !bagAccepted && MetaGameState.HasStarterEquipment() &&
                 MetaGameState.AreBagSlotsFull())
             {
                 ShowDecisionModal("MATCH CHECK",
                     "Starter equipment is equipped and your bag slots are full. You can play, but a win cannot award another bag.",
                     "PLAY ANYWAY", "EQUIPMENT",
-                    delegate { RunPreMatchChecks(ranked, true, true); },
+                    delegate { RunPreMatchChecks(mode, true, true); },
                     delegate { NavigateTab("GEAR"); }, IconId.Warn);
                 return;
             }
 
-            if (!starterAccepted && MetaGameState.HasStarterEquipment())
+            if (stakes && !starterAccepted && MetaGameState.HasStarterEquipment())
             {
                 ShowDecisionModal("STARTER ITEM EQUIPPED",
                     "You are entering a match with starter equipment. Play anyway?",
                     "PLAY", "EQUIPMENT",
-                    delegate { RunPreMatchChecks(ranked, true, bagAccepted); },
+                    delegate { RunPreMatchChecks(mode, true, bagAccepted); },
                     delegate { NavigateTab("GEAR"); }, IconId.Tape);
                 return;
             }
 
-            if (!bagAccepted && MetaGameState.AreBagSlotsFull())
+            if (stakes && !bagAccepted && MetaGameState.AreBagSlotsFull())
             {
                 ShowDecisionModal("BAG SLOTS FULL",
                     "There is no room for a match bag. You can still play, but a win cannot award another bag.",
                     "PLAY ANYWAY", "MANAGE BAGS",
-                    delegate { RunPreMatchChecks(ranked, true, true); },
+                    delegate { RunPreMatchChecks(mode, true, true); },
                     delegate
                     {
                         Show(ScreenId.BagInventory);
@@ -458,14 +496,14 @@ namespace Pickleball.UI
             if (!MetaGameState.IsFeatureUnlocked("tutorial_seen"))
             {
                 tutorialReplay = false;
-                pendingPostTutorialRanked = ranked;
+                pendingPostTutorialMode = mode;
                 Show(ScreenId.Tutorial);
                 return;
             }
 
-            if (!ranked)
+            if (mode == Sim.MatchMode.Tour)
             {
-                int fee = MetaGameState.CurrentTour.entryCoins;
+                int fee = Sim.MatchModes.EntryFee(mode, MetaGameState.CurrentTour.entryCoins);
                 if (MetaGameState.Coins < fee)
                 {
                     ShowDecisionModal("NOT ENOUGH COINS",
@@ -480,7 +518,7 @@ namespace Pickleball.UI
                 pendingTourEntryFee = fee;
             }
 
-            StartMatchmakingInternal(ranked);
+            StartMatchmakingInternal(mode);
         }
 
         /// <summary>The how-to-play card's CONTINUE button. Marks the tutorial seen and resumes the
@@ -489,7 +527,7 @@ namespace Pickleball.UI
         {
             if (tutorialReplay) { tutorialReplay = false; GoBack(); return; }
             MetaGameState.UnlockFeature("tutorial_seen");
-            RunPreMatchChecks(pendingPostTutorialRanked, true, true);
+            RunPreMatchChecks(pendingPostTutorialMode, true, true);
         }
 
         private void ShowDecisionModal(string title, string body, string primaryLabel, string secondaryLabel,
@@ -518,10 +556,10 @@ namespace Pickleball.UI
             Show(ScreenId.Purchase);
         }
 
-        private void StartMatchmakingInternal(bool ranked)
+        private void StartMatchmakingInternal(Sim.MatchMode mode)
         {
             backStack.Clear();
-            matchmakingIsRanked = ranked;
+            matchMode = mode;
             // The HUD canvas sorts above the meta canvas, so if it is still visible from a previous
             // match its score plates draw straight over the matchmaking screen.
             if (GameplayHUD.Instance != null)
@@ -529,7 +567,8 @@ namespace Pickleball.UI
                 GameplayHUD.Instance.HideMatchResult();
                 GameplayHUD.Instance.SetVisible(false);
             }
-            Show(ScreenId.Matchmaking, false);
+            if (Sim.MatchModes.IsOnline(mode)) Show(ScreenId.Matchmaking, false);
+            else BeginMatchIntro();
         }
 
         private GameObject BuildScreen(ScreenId id)
@@ -541,8 +580,11 @@ namespace Pickleball.UI
                 case ScreenId.StartupLeagueResult: return StartupResultsScreen.BuildLeagueResult(metaRoot, this);
                 case ScreenId.Lobby: return LobbyScreen.Build(metaRoot, this);
                 case ScreenId.TourSelect: return TourSelectScreen.Build(metaRoot, this);
-                case ScreenId.Matchmaking: return MatchmakingScreen.Build(metaRoot, this, matchmakingIsRanked);
-                case ScreenId.MatchIntro: return MatchIntroScreen.Build(metaRoot, this, pendingOpponentName);
+                case ScreenId.Matchmaking: return MatchmakingScreen.Build(metaRoot, this);
+                case ScreenId.MatchIntro:
+                    return MatchIntroScreen.Build(metaRoot, this, pendingOpponentName, pendingOpponentRank,
+                        !pendingMatchIsPvP);
+                case ScreenId.Practice: return FlowScreens.Practice(metaRoot, this);
                 case ScreenId.ChestOpening: return ChestOpeningScreen.Build(metaRoot, this, selectedBag);
                 case ScreenId.PlayMode: return FlowScreens.Play(metaRoot, this);
                 case ScreenId.BagInventory: return FlowScreens.Bags(metaRoot, this);
@@ -577,12 +619,14 @@ namespace Pickleball.UI
         // ============================================================
         // MATCH / PAUSE HAND-OFF
         // ============================================================
+        /// <summary>The practice match card: the AI, labelled with the level it will play at.</summary>
         public void BeginMatchIntro()
         {
             pendingMatchIsPvP = false;
             pendingMatchTransport = null;
             pendingMatchStart = default(MatchStartMessage);
             pendingOpponentName = "R. VEGA";
+            pendingOpponentRank = Sim.MatchModes.SkillLabel(Sim.MatchModes.PracticeSkill(SelectedPracticeLevel));
             Show(ScreenId.MatchIntro, false);
         }
 
@@ -592,6 +636,9 @@ namespace Pickleball.UI
             pendingMatchTransport = transport;
             pendingMatchStart = matchStart;
             pendingOpponentName = string.IsNullOrEmpty(matchStart.opponentName) ? "OPPONENT" : matchStart.opponentName;
+            // Their league, from the trophy count they reported -- the card used to show the AI's
+            // tour difficulty for a human opponent.
+            pendingOpponentRank = MetaGameState.LeagueTierName(matchStart.opponentTrophies);
 
             GameObject managers = GameObject.Find("Managers");
             if (managers == null)
@@ -633,6 +680,8 @@ namespace Pickleball.UI
 
         public void EnterMatch()
         {
+            // A match against the AI is practice by definition, however it was reached.
+            matchMode = Sim.MatchMode.Practice;
             matchActive = true;
             matchFinished = false;
             Time.timeScale = 1f;
@@ -657,42 +706,13 @@ namespace Pickleball.UI
             }
         }
 
-        /// <summary>Scales the AI opponent to the context of this match -- previously it was hardcoded
-        /// to Medium for every match regardless of tour stage or rank. Tour matches ramp with the
-        /// stage; ranked matches scale with the player's trophy count.</summary>
+        /// <summary>Sets the AI to the practice level the player picked. The AI only plays practice
+        /// matches; tours are online.</summary>
         private void ConfigureOpponentForMatch()
         {
             OpponentAI ai = FindObjectOfType<OpponentAI>();
             if (ai == null) return;
-            float skill = PredictOpponentSkill(matchmakingIsRanked);
-            // The first coached match gives the player time to connect swipe, movement and contact.
-            // Normal tour/ranked scaling resumes as soon as the contextual coach is completed.
-            if (!MetaGameState.IsFeatureUnlocked("gameplay_coach_complete")) skill = Mathf.Min(skill, 0.30f);
-            ai.ConfigureSkill(skill);
-        }
-
-        /// <summary>The skill value ConfigureOpponentForMatch will hand the AI, computed ahead of the
-        /// match so the matchmaking screen can show an honest difficulty tier instead of a fake
-        /// opponent OVR (the AI plays on neutral stats -- it has no loadout to rate).</summary>
-        public static float PredictOpponentSkill(bool ranked)
-        {
-            if (ranked)
-                return Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(600f, 3000f, MetaGameState.Trophies));
-
-            int stages = Mathf.Max(1, MetaGameState.Tours.Count - 1);
-            float stageT = Mathf.Clamp01(MetaGameState.CurrentTourIndex / (float)stages);
-            return Mathf.Lerp(0.34f, 1f, stageT);
-        }
-
-        /// <summary>Word label for a skill value -- what the matchmaking card shows where a real
-        /// opponent would show OVR.</summary>
-        public static string OpponentSkillLabel(float skill)
-        {
-            if (skill < 0.30f) return "ROOKIE";
-            if (skill < 0.50f) return "CLUB";
-            if (skill < 0.70f) return "CONTENDER";
-            if (skill < 0.88f) return "PRO";
-            return "ELITE";
+            ai.ConfigureSkill(Sim.MatchModes.PracticeSkill(SelectedPracticeLevel));
         }
 
         /// <summary>PvP equivalent of EnterMatch, called once MatchmakingScreen's PhotonQuickMatch
@@ -701,8 +721,11 @@ namespace Pickleball.UI
         /// sessions never touch it.</summary>
         public void EnterPvPMatch(INetworkTransport transport, MatchStartMessage matchStart)
         {
+            matchMode = Sim.MatchMode.Tour;
             matchActive = true;
             matchFinished = false;
+            // As in EnterMatch: the match has started, so the entry fee is no longer refundable.
+            pendingTourEntryFee = 0;
             Time.timeScale = 1f;
             backStack.Clear();
             ClearCurrentScreen();
@@ -822,22 +845,18 @@ namespace Pickleball.UI
         public void ForfeitMatch()
         {
             if (matchFinished) { ExitMatchToLobby(); return; }
-            // A forfeit is a loss, scored through the same table as any other loss (was a flat -19,
-            // which was cheaper than actually losing a ranked match on the scoreboard -- so bailing
-            // out from behind was the correct play). A small surcharge on top keeps it from being the
-            // painless option.
-            RallyManager rally = RallyManager.Instance;
-            int playerScore = rally != null ? rally.playerScore : 0;
-            int opponentScore = rally != null ? Mathf.Max(rally.opponentScore, playerScore + 1) : 1;
-            TourInfo tour = matchmakingIsRanked ? null : MetaGameState.CurrentTour;
-            int opponentTrophies = matchmakingIsRanked
-                ? (pendingMatchIsPvP ? pendingMatchStart.opponentTrophies : MetaGameState.Trophies)
-                : 0;
-
-            MatchReward reward = MatchRewards.Compute(false, tour, MetaGameState.Trophies,
-                opponentTrophies, playerScore, opponentScore, 0, 0);
-            MetaGameState.AddTrophies(reward.trophies - 5);
-            MetaGameState.AddSeasonXp(reward.seasonXp);
+            // A tour forfeit is a loss, scored through the same table as any other loss (was a flat
+            // -19, which was cheaper than actually losing on the scoreboard -- so bailing out from
+            // behind was the correct play), plus a small surcharge so it is never the painless option.
+            // Leaving practice costs nothing.
+            if (matchMode == Sim.MatchMode.Tour)
+            {
+                RallyManager rally = RallyManager.Instance;
+                MatchReward reward = MatchRewards.Forfeit(matchMode, MetaGameState.CurrentTour,
+                    rally != null ? rally.playerScore : 0, rally != null ? rally.opponentScore : 0);
+                MetaGameState.AddTrophies(reward.trophies);
+                MetaGameState.AddSeasonXp(reward.seasonXp);
+            }
 
             GameObject managers = GameObject.Find("Managers");
             NetworkedMatchController nmc = managers != null ? managers.GetComponent<NetworkedMatchController>() : null;
@@ -859,58 +878,38 @@ namespace Pickleball.UI
             int perfects = rally != null ? rally.PlayerPerfectCount : 0;
             int longestRally = rally != null ? rally.LongestRally : 0;
 
-            TourInfo tour = matchmakingIsRanked ? null : MetaGameState.CurrentTour;
-            // For a real PvP match we know the opponent's rating; for a local ranked match assume an
-            // even pairing so the Elo swing lands near the classic +/-17.
-            int opponentTrophies = matchmakingIsRanked
-                ? (pendingMatchIsPvP ? pendingMatchStart.opponentTrophies : MetaGameState.Trophies)
-                : 0;
-
-            MatchReward reward = MatchRewards.Compute(playerWon, tour, MetaGameState.Trophies,
-                opponentTrophies, playerScore, opponentScore, perfects, longestRally);
+            MatchReward reward = MatchRewards.Compute(matchMode, playerWon, MetaGameState.CurrentTour,
+                playerScore, opponentScore, perfects, longestRally);
+            MetaGameState.LastMatchReward = reward;
+            // Practice pays nothing: no coins, trophies, XP, bag, career win or tour progress.
+            if (matchMode != Sim.MatchMode.Tour) return;
 
             MetaGameState.AddCoins(reward.coins);
             MetaGameState.AddTrophies(reward.trophies);
             MetaGameState.AddSeasonXp(reward.seasonXp);
-            MetaGameState.LastMatchReward = reward;
 
             if (playerWon)
             {
                 MetaGameState.RecordCareerWin();
                 MetaGameState.AddMatchBag();
-                // Tour wins advance tour progress; ranked/PvP wins do not -- see MetaGameState.RecordTourWin.
-                if (!matchmakingIsRanked) MetaGameState.RecordTourWin();
+                MetaGameState.RecordTourWin();
             }
         }
 
-        /// <summary>Coins a PLAY AGAIN tap costs right now: the current tour's entry fee for a tour
-        /// match, zero for ranked or PvP. Drives both the rematch charge and the button's label.</summary>
+        /// <summary>Coins a PLAY AGAIN tap costs right now: the current tour's entry fee after a tour
+        /// match, nothing after practice. Drives the button's label.</summary>
         public int PendingRematchFee =>
-            (matchmakingIsRanked || pendingMatchIsPvP) ? 0 : Mathf.Max(0, MetaGameState.CurrentTour.entryCoins);
+            Sim.MatchModes.EntryFee(matchMode, MetaGameState.CurrentTour.entryCoins);
 
-        /// <summary>The match-result modal's PLAY AGAIN button. A tour rematch re-charges the entry
-        /// fee, exactly like the first attempt did in RunPreMatchChecks -- RallyManager.RestartMatch
-        /// skipped straight past that check, so PLAY AGAIN was a free tour run. Ranked and PvP
-        /// rematches stay free. If the player can't afford another run, bounce to the lobby with the
-        /// standard prompt instead of restarting.</summary>
+        /// <summary>The match-result modal's PLAY AGAIN button. A tour rematch is a fresh online
+        /// search, through the same pre-match checks and entry fee as the first one (it used to
+        /// restart the local simulation for free). Practice restarts straight away at the same level.</summary>
         public void RequestRematch()
         {
-            if (matchmakingIsRanked || pendingMatchIsPvP)
+            if (matchMode == Sim.MatchMode.Tour)
             {
                 ExitMatchToLobby();
-                StartRankedMatchmaking();
-                return;
-            }
-            int fee = PendingRematchFee;
-            if (fee > 0 && !MetaGameState.SpendCoins(fee))
-            {
-                if (GameplayHUD.Instance != null) GameplayHUD.Instance.HideMatchResult();
-                ExitMatchToLobby();
-                ShowDecisionModal("NOT ENOUGH COINS",
-                    "You need " + fee + " coins to play this tour again.",
-                    "SHOP", "OK",
-                    delegate { Show(ScreenId.Shop); },
-                    delegate { }, IconId.Coin);
+                StartTourMatch();
                 return;
             }
 

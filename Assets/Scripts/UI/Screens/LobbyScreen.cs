@@ -243,6 +243,9 @@ namespace Pickleball.UI
                 BagRewardLabel(slot), UITheme.Cream, 24);
             UIBuilder.StretchRect(reward.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f),
                 new Vector2(UITheme.F(48f), UITheme.F(20f)), new Vector2(-UITheme.F(4f), UITheme.F(52f)));
+            // "LEAGUE" is wider than the space beside the shoe at 24 and used to run into the timer
+            // above it; shrink to fit rather than spill.
+            UIBuilder.Clamp(reward, 16);
 
             Image shoe = UIReferenceArt.Draw(card.root.transform, "shoe");
             UIBuilder.Rect(shoe.gameObject, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f),
@@ -284,7 +287,9 @@ namespace Pickleball.UI
             UIBuilder.Rect(gift.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 Vector2.zero, new Vector2(UITheme.F(82f), UITheme.F(74f)));
 
-            float claimHeight = UITheme.F(20f);
+            // Tall enough for the compact button type UIButtonTypography enforces (32): at the
+            // board's 20px the face was ~35 units high, the line didn't fit, and Truncate drew nothing.
+            float claimHeight = UITheme.F(24f);
             PSKit.ButtonStack claim = PSKit.PressStack(host.transform, "Claim",
                 new Vector2(LeftColWidth, claimHeight), 18, false,
                 UITheme.BlazeDeep, UITheme.Blaze, UITheme.SheenBlaze,

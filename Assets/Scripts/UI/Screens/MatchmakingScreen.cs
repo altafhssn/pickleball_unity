@@ -20,6 +20,7 @@ namespace Pickleball.UI
     {
         // Board coordinates (390x844).
         private const float TitleY = 122f;
+        private const float TourY = 172f;
         private const float PulseY = 368f;
         private const float StatusY = 466f;
         private const float SubStatusY = 494f;
@@ -27,7 +28,12 @@ namespace Pickleball.UI
         private static readonly float[] RingDiameters = { 304f, 217f, 130f };
         private static readonly float[] RingAlphas = { 0.15f, 0.30f, 0.55f };
 
-        public static GameObject Build(Transform parent, ScreenManager mgr, bool ranked = false)
+        /// <summary>How long a tour search runs before the screen offers practice instead. Nobody
+        /// may be online to pair with, and there is no bot backfill.</summary>
+        private const float PracticeOfferSeconds = 10f;
+        private const float PracticeOfferY = 650f;
+
+        public static GameObject Build(Transform parent, ScreenManager mgr)
         {
             GameObject root = UIBuilder.Child("MatchmakingScreen", parent);
             UIBuilder.Fill(root);
@@ -36,10 +42,15 @@ namespace Pickleball.UI
             GameObject board = PSKit.BoardHost(safe);
 
             Text title = PSKit.Display(board.transform, "Title", TextAnchor.MiddleCenter,
-                ranked ? "RANKED MATCH" : "QUICK MATCH", UITheme.Volt, UITheme.TypeHeroTitle);
+                "TOUR MATCH", UITheme.Volt, UITheme.TypeHeroTitle);
             PSKit.BoardRow(title.gameObject, TitleY, 70f, 20f);
             UIBuilder.ClampLine(title, 40);
-            if (ranked) UIReferenceArt.Title(title, "title_ranked", 232.3f, 21.3f);
+
+            TourInfo tour = MetaGameState.CurrentTour;
+            Text tourName = PSKit.Body(board.transform, "Tour", TextAnchor.MiddleCenter,
+                "TOUR " + (MetaGameState.CurrentTourIndex + 1) + "  ·  " + tour.name, UITheme.InkOnLight, 34);
+            PSKit.BoardRow(tourName.gameObject, TourY, 30f, 20f);
+            UIBuilder.ClampLine(tourName, 22);
 
             // ---- Pulse ----
             GameObject pulse = UIBuilder.Child("Pulse", board.transform);
@@ -89,17 +100,26 @@ namespace Pickleball.UI
             dashImg.color = UITheme.InkOnLightDim;
             dashImg.raycastTarget = false;
 
+            UIBuilder.RunOnScreen(root, OfferPracticeAfter(board.transform, mgr));
+
 #if PHOTON_UNITY_NETWORKING
-            if (ranked)
-            {
-                BeginRealMatchmaking(root, mgr, status, subStatus);
-            }
-            else
+            BeginRealMatchmaking(root, mgr, status, subStatus);
+#else
+            // Tours are online-only; a build without Photon has nobody to search for.
+            mgr.MatchmakingFailed();
 #endif
-            {
-                UIBuilder.RunOnScreen(root, ResolveSearch(mgr, status, subStatus));
-            }
             return root;
+        }
+
+        /// <summary>After a while with nobody found, offer to leave the search (the entry fee is
+        /// refunded) and practise against the AI instead.</summary>
+        private static IEnumerator OfferPracticeAfter(Transform board, ScreenManager mgr)
+        {
+            yield return new WaitForSecondsRealtime(PracticeOfferSeconds);
+            if (board == null) yield break;
+            Text practice = PSKit.TextButton(board, "PRACTICE VS AI INSTEAD", UITheme.InkOnLight, 40, mgr.PracticeInstead);
+            PSKit.BoardRow(practice.transform.parent.gameObject, PracticeOfferY, 44f);
+            UIFadeIn.Attach(practice.transform.parent.gameObject, 0.3f, 0f, 12f);
         }
 
 #if PHOTON_UNITY_NETWORKING
@@ -170,16 +190,5 @@ namespace Pickleball.UI
             if (mgr != null) mgr.BeginPvPMatchIntro(transport, matchStart);
         }
 #endif
-
-        /// <summary>Tour matches are always against the AI, so the "search" is a beat of anticipation
-        /// rather than a real wait. Keeping it short and honest matters more than dressing it up.</summary>
-        private static IEnumerator ResolveSearch(ScreenManager mgr, Text status, Text subStatus)
-        {
-            yield return new WaitForSeconds(1.4f);
-            if (status != null) status.text = "OPPONENT FOUND";
-            if (subStatus != null) subStatus.text = MetaGameState.CurrentTour.name;
-            yield return new WaitForSeconds(0.7f);
-            if (mgr != null) mgr.BeginMatchIntro();
-        }
     }
 }

@@ -25,7 +25,7 @@ namespace Pickleball.UI
             var rows = new List<string>();
             string dir = "output/text-audit/" + Screen.width + "x" + Screen.height;
             Directory.CreateDirectory(dir);
-            var screens = new[] { ScreenId.Boot, ScreenId.Lobby, ScreenId.PlayMode, ScreenId.TourSelect,
+            var screens = new[] { ScreenId.Boot, ScreenId.Lobby, ScreenId.PlayMode, ScreenId.Practice, ScreenId.TourSelect,
                 ScreenId.BagInventory, ScreenId.GearLoadout, ScreenId.GearCatalog, ScreenId.GearDetail,
                 ScreenId.GearUpgradeReveal, ScreenId.League, ScreenId.SeasonPass, ScreenId.Shop,
                 ScreenId.Settings, ScreenId.Account, ScreenId.Purchase, ScreenId.ProfileRecovery,
@@ -38,6 +38,8 @@ namespace Pickleball.UI
                 // Some reference-board screens resolve their fit one LateUpdate after the screen
                 // transition. A little headroom keeps captures deterministic on a busy editor.
                 yield return new WaitForSecondsRealtime(.75f);
+                // Let the tour search run long enough to show its PRACTICE VS AI INSTEAD offer.
+                if (screen == ScreenId.Matchmaking) yield return new WaitForSecondsRealtime(10.5f);
                 yield return new WaitForEndOfFrame();
                 Canvas.ForceUpdateCanvases();
                 var root = (GameObject)typeof(ScreenManager).GetField("currentScreenGO", flags).GetValue(mgr);
@@ -68,6 +70,29 @@ namespace Pickleball.UI
             yield return new WaitForSecondsRealtime(.3f);
             yield return new WaitForEndOfFrame();
             Capture((GameObject)typeof(GameplayHUD).GetField("canvasRoot", flags).GetValue(GameplayHUD.Instance), "MatchResult", dir, rows);
+
+            // EnterMatch is always practice. The same states read differently in a tour match
+            // (QUIT MATCH, the trophy penalty, the rewards strip), so capture those too. Only the
+            // mode flag changes: no forfeit, reward or fee is applied.
+            FieldInfo modeField = typeof(ScreenManager).GetField("matchMode", flags);
+            modeField.SetValue(mgr, Pickleball.Sim.MatchMode.Tour);
+            GameplayHUD.Instance.HideMatchResult();
+            mgr.ShowPause();
+            yield return new WaitForSecondsRealtime(.3f);
+            yield return new WaitForEndOfFrame();
+            Capture((GameObject)typeof(ScreenManager).GetField("currentScreenGO", flags).GetValue(mgr), "PauseTour", dir, rows);
+            mgr.ConfirmForfeit();
+            yield return new WaitForSecondsRealtime(.3f);
+            yield return new WaitForEndOfFrame();
+            Capture((GameObject)typeof(ScreenManager).GetField("modalGO", flags).GetValue(mgr), "ConfirmationTour", dir, rows);
+            mgr.DismissModal();
+            mgr.ResumeFromPause();
+            GameplayHUD.Instance.ShowMatchResult(true);
+            yield return new WaitForSecondsRealtime(.3f);
+            yield return new WaitForEndOfFrame();
+            Capture((GameObject)typeof(GameplayHUD).GetField("canvasRoot", flags).GetValue(GameplayHUD.Instance), "MatchResultTour", dir, rows);
+            modeField.SetValue(mgr, Pickleball.Sim.MatchMode.Practice);
+
             Report = string.Join("\n", rows.ToArray());
             File.WriteAllText(dir + "/findings.txt", Report);
             mgr.ExitMatchToLobby();
@@ -82,6 +107,13 @@ namespace Pickleball.UI
                 if (!t.isActiveAndEnabled || string.IsNullOrWhiteSpace(t.text)) continue;
                 if (t.text.IndexOf('\uFFFD') >= 0)
                     rows.Add(screen + " | invalid replacement character | " + t.name + " | " + t.text);
+                // A line taller than its box under VerticalWrapMode.Truncate draws nothing at all,
+                // and the preferred-size check below can't see it. Ask what was actually laid out.
+                // Rows scrolled out of a masked viewport are culled and never laid out, so skip them.
+                if (t.verticalOverflow == VerticalWrapMode.Truncate && !t.canvasRenderer.cull &&
+                    t.cachedTextGenerator.lineCount == 0)
+                    rows.Add(screen + " | text truncated to nothing | " + t.name + " | " + t.text.Replace("\n", " / ")
+                        + " | font=" + t.fontSize + " | rect=" + t.rectTransform.rect.size);
 
                 var rect = t.rectTransform.rect;
                 if (rect.width <= 0 || rect.height <= 0) continue;
