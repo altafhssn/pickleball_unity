@@ -25,6 +25,11 @@ namespace Pickleball.Net
         private const string PropLeague = "league";
         private const int PointsToWin = Pickleball.Gameplay.MatchConfig.PointsToWin;
         private const double StartLeadSeconds = 6.25;
+        /// <summary>Room property marking a room opened by a searcher who has given up on their own
+        /// league. Widened searchers only join these, so two of them always converge on one room.</summary>
+        private const string PropWide = "wide";
+        /// <summary>How long to wait alone in a same-league room before searching every league.</summary>
+        private const float WidenAfterSeconds = 15f;
 
         /// <summary>How long Photon keeps a disconnected player's room slot reserved for
         /// ReconnectAndRejoin, and (matched to it) how long this client waits before treating the
@@ -48,6 +53,8 @@ namespace Pickleball.Net
 
         private bool isDestroyed;
         private int leagueIndex;
+        private bool widened;
+        private bool requeueWhenReady;
 
         private PhotonNetworkTransport transport;
         private bool matchStarted;
@@ -66,6 +73,8 @@ namespace Pickleball.Net
             searchFailed = false;
             searchStartedAt = Time.realtimeSinceStartup;
             leagueIndex = MetaGameState.CurrentLeagueIndex;
+            widened = false;
+            requeueWhenReady = false;
             PhotonNetwork.AddCallbackTarget(this);
 
             PhotonNetwork.GameVersion = ProtocolVersion;
@@ -113,11 +122,14 @@ namespace Pickleball.Net
                 PlayerTtl = PlayerTtlMs,
                 EmptyRoomTtl = PlayerTtlMs,
                 CleanupCacheOnLeave = true,
-                CustomRoomProperties = new Hashtable { { PropProtocol, ProtocolVersion }, { PropLeague, leagueIndex } },
-                CustomRoomPropertiesForLobby = new[] { PropProtocol, PropLeague },
+                CustomRoomProperties = new Hashtable { { PropProtocol, ProtocolVersion }, { PropLeague, leagueIndex }, { PropWide, widened } },
+                CustomRoomPropertiesForLobby = new[] { PropProtocol, PropLeague, PropWide },
             };
-            // Only rooms for this league match; a new room is opened for it otherwise.
-            var expected = new Hashtable { { PropProtocol, ProtocolVersion }, { PropLeague, leagueIndex } };
+            // Only rooms for this league match at first; after WidenAfterSeconds alone the search
+            // drops the league and pairs with any other widened searcher.
+            var expected = widened
+                ? new Hashtable { { PropProtocol, ProtocolVersion }, { PropWide, true } }
+                : new Hashtable { { PropProtocol, ProtocolVersion }, { PropLeague, leagueIndex } };
             PhotonNetwork.JoinRandomOrCreateRoom(expected, 2, MatchmakingMode.FillRoom,
                 TypedLobby.Default, null, "pickleball-" + Guid.NewGuid().ToString("N"), roomOptions);
         }
@@ -130,6 +142,11 @@ namespace Pickleball.Net
             {
                 OnSearching?.Invoke();
             }
+        }
+
+        public override void OnLeftRoom()
+        {
+            if (requeueWhenReady) return; // Update rejoins once the client is back on the master server.
         }
 
         public override void OnPlayerEnteredRoom(Player newPlayer)
@@ -267,7 +284,21 @@ namespace Pickleball.Net
 
         private void Update()
         {
-            if (matchStarted || searchFailed || Time.realtimeSinceStartup - searchStartedAt < 60f) return;
+            if (isDestroyed || matchStarted || searchFailed) return;
+            float waited = Time.realtimeSinceStartup - searchStartedAt;
+            if (requeueWhenReady && PhotonNetwork.NetworkClientState == ClientState.ConnectedToMasterServer)
+            {
+                requeueWhenReady = false;
+                JoinQueue();
+            }
+            else if (!widened && waited >= WidenAfterSeconds && PhotonNetwork.InRoom &&
+                PhotonNetwork.CurrentRoom.PlayerCount < 2)
+            {
+                widened = true;
+                requeueWhenReady = true;
+                PhotonNetwork.LeaveRoom(false);
+            }
+            if (waited < 60f) return;
             searchFailed = true;
             OnFailure?.Invoke("No opponent found in time. Please try again.");
         }
