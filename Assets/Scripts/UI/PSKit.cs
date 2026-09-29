@@ -884,20 +884,20 @@ namespace Pickleball.UI
 
         public static readonly NavTab[] Tabs =
         {
-            new NavTab("HOME",   "HOME",   IconId.Home,   default(Color)),   // active tile carries the colour
-            new NavTab("GEAR",   "GEAR",   IconId.Shield, default(Color)),
-            new NavTab("LEAGUE", "LEAGUE", IconId.Trophy, default(Color)),
-            new NavTab("SHOP",   "SHOP",   IconId.Bag,    default(Color)),
+            new NavTab("HOME",     "HOME",     IconId.Home,     default(Color)),   // active tile carries the colour
+            new NavTab("LEAGUE",   "LEAGUES",  IconId.Trophy,   default(Color)),
+            new NavTab("GEAR",     "GEAR",     IconId.Shield,   default(Color)),
+            new NavTab("SETTINGS", "SETTINGS", IconId.Settings, default(Color)),
         };
 
         private static Color TabTint(string id)
         {
             switch (id)
             {
-                case "GEAR":   return UITheme.Blaze;
-                case "LEAGUE": return UITheme.Gold;
-                case "SHOP":   return UITheme.Bubblegum;
-                default:       return UITheme.Volt;
+                case "GEAR":     return UITheme.Blaze;
+                case "LEAGUE":   return UITheme.Gold;
+                case "SETTINGS": return UITheme.Bubblegum;
+                default:         return UITheme.Volt;
             }
         }
 
@@ -956,8 +956,9 @@ namespace Pickleball.UI
                     labelColor = UITheme.Ink1;
                 }
 
-                GameObject glyph = tab.id == "HOME"
-                    ? UIIcon.BuildPlain(iconHost, IconId.Home, UITheme.F(37f), glyphColor)
+                // Home and Settings have no board art; they use the kit's own glyphs.
+                GameObject glyph = tab.id == "HOME" || tab.id == "SETTINGS"
+                    ? UIIcon.BuildPlain(iconHost, tab.icon, UITheme.F(37f), glyphColor)
                     : UIReferenceArt.Draw(iconHost, "nav_" + tab.id.ToLowerInvariant()).gameObject;
                 UIBuilder.Rect(glyph, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                     new Vector2(0.5f, 0.5f), new Vector2(0, active ? -62f : -78f),

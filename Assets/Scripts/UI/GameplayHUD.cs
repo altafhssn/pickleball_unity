@@ -55,10 +55,10 @@ namespace Pickleball.UI
         private GameObject winLoseTitleIcon;
         private Text winLoseScoreText;
         private Text rewardCoinText;
-        private Text rewardTrophyText;
-        private GameObject rewardCoinHost;
-        private GameObject rewardTrophyHost;
-        private Text practiceNoteText;
+        private Text rewardPointsText;
+        private GameObject rewardPointsHost;
+        private Text leagueUnchangedText;
+        private Text resultStatusText;
         private Transform modalPlayerPipsRoot;
         private Transform modalOpponentPipsRoot;
 
@@ -188,10 +188,11 @@ namespace Pickleball.UI
             if (powerHost == null) return;
             powerHost.SetActive(visible);
             if (!visible) return;
-            float power = Mathf.Clamp01(input.CurrentSwipeVector.magnitude);
-            powerText.text = ShotLabel(input.CurrentPreviewShot) + "  ·  " +
-                Mathf.RoundToInt(power * 100f) + "% POWER";
-            powerFill.rectTransform.anchorMax = new Vector2(power, 1f);
+            // The meter is the swipe's speed; where it lands is the landing circle on the court.
+            float pace = Mathf.Clamp01(input.CurrentPace);
+            powerText.text = ShotLabel(input.CurrentPreviewShot) + "  ·  SPEED " +
+                Mathf.RoundToInt(pace * 100f) + "%";
+            powerFill.rectTransform.anchorMax = new Vector2(pace, 1f);
             powerFill.color = PreviewShotColor(input.CurrentPreviewShot);
         }
 
@@ -587,9 +588,11 @@ namespace Pickleball.UI
         // ============================================================
         private void BuildShotQualityCallout(Transform parent)
         {
+            // Below the net, in the space between it and the player: over the net, at full banner
+            // size, it covered the ball's flight at the moment the player needs to watch it.
             shotQualityHost = UIBuilder.Child("ShotQualityCallout", parent);
             UIBuilder.Rect(shotQualityHost, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0, 120), new Vector2(900, 150));
+                new Vector2(0, -125), new Vector2(760, 110));
 
             shotQualityText = UIBuilder.StrokedText(shotQualityHost.transform, "Text", TextAnchor.MiddleCenter, "", Color.white, UITheme.TypeCallout);
             UIBuilder.Fill(shotQualityText.gameObject);
@@ -610,9 +613,9 @@ namespace Pickleball.UI
         {
             shotFeedbackHost = UIBuilder.Child("ShotFeedbackCallout", parent);
             UIBuilder.Rect(shotFeedbackHost, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0, -30), new Vector2(900, 120));
+                new Vector2(0, -215), new Vector2(760, 90));
 
-            shotFeedbackText = UIBuilder.StrokedText(shotFeedbackHost.transform, "Text", TextAnchor.MiddleCenter, "", Color.white, 58);
+            shotFeedbackText = UIBuilder.StrokedText(shotFeedbackHost.transform, "Text", TextAnchor.MiddleCenter, "", Color.white, 44);
             UIBuilder.Fill(shotFeedbackText.gameObject);
 
             CanvasGroup cg = shotFeedbackHost.AddComponent<CanvasGroup>();
@@ -754,33 +757,35 @@ namespace Pickleball.UI
             RectTransform cardRt = card.GetComponent<RectTransform>();
             cardRt.anchorMin = new Vector2(0f, 0.5f);
             cardRt.anchorMax = new Vector2(1f, 0.5f);
-            cardRt.offsetMin = new Vector2(UITheme.SpaceLg, -450);
-            cardRt.offsetMax = new Vector2(-UITheme.SpaceLg, 450);
+            cardRt.offsetMin = new Vector2(UITheme.SpaceLg, -520);
+            cardRt.offsetMax = new Vector2(-UITheme.SpaceLg, 520);
             UIBuilder.ShineLayer(card.transform, 0.30f);
 
-            // Vertical stack, all measured from the card's top edge with a centred pivot:
+            // Vertical stack, measured from the card's top edge (each element's top, except the
+            // centre-pivoted pip rows):
             //   title      -40 .. -140
             //   "FINAL"   -152 .. -184
             //   digits    -196 .. -292
             //   pip rows  -318 .. -344   (must clear the digits; they used to be laid at -326 while
             //                             the 110px-tall score box still ran to -356, so the two
             //                             pip stacks were drawn straight through "7 - 4")
-            //   rewards   -370 .. -478
-            // and the button stack is anchored up from the bottom, topping out at -572.
+            //   rewards   -370 .. -478   coins earned | league points (or "no league change")
+            //   status    -494 .. -614   new coin balance, league and any promotion/relegation
+            // and the button stack is anchored up from the bottom, topping out at -636.
 
             // --- Title ---
             GameObject titleRow = UIBuilder.Child("TitleRow", card.transform);
-            UIBuilder.Rect(titleRow, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -90), new Vector2(700, 100));
+            UIBuilder.Rect(titleRow, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -40), new Vector2(700, 100));
             winLoseTitleIcon = UIBuilder.IconAt(titleRow.transform, IconId.Trophy, 78f, UITheme.GoldMid, UITheme.OutlineNavy, new Vector2(0f, 0.5f), new Vector2(160, 0));
             winLoseTitleText = UIBuilder.StrokedText(titleRow.transform, "Title", TextAnchor.MiddleLeft, "VICTORY!", UITheme.GoldMid, 68);
             UIBuilder.Rect(winLoseTitleText.gameObject, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(0f, 0.5f), new Vector2(212, 0), new Vector2(-226, 92));
 
             // --- Score ---
             Text scoreLabel = UIBuilder.Text(card.transform, "ScoreLabel", TextAnchor.MiddleCenter, "FINAL SCORE", new Color(1f, 1f, 1f, 0.8f), 24, FontStyle.Bold);
-            UIBuilder.Rect(scoreLabel.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -168), new Vector2(400, 32));
+            UIBuilder.Rect(scoreLabel.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -152), new Vector2(400, 32));
 
             winLoseScoreText = UIBuilder.StrokedText(card.transform, "Score", TextAnchor.MiddleCenter, "7 - 4", Color.white, 82);
-            UIBuilder.Rect(winLoseScoreText.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -244), new Vector2(600, 96));
+            UIBuilder.Rect(winLoseScoreText.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -196), new Vector2(600, 96));
 
             GameObject playerPips = UIBuilder.Child("PlayerPipsRoot", card.transform);
             UIBuilder.Rect(playerPips, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(-176, -331), Vector2.zero);
@@ -802,28 +807,34 @@ namespace Pickleball.UI
             rewardCoinText = UIBuilder.StrokedText(coinHost.transform, "Text", TextAnchor.MiddleLeft, "+0", UITheme.GoldTop, 32);
             UIBuilder.Rect(rewardCoinText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(-26, 0), new Vector2(150, 44));
 
-            GameObject tropHost = UIBuilder.Child("Trophies", rewards.transform);
-            UIBuilder.StretchRect(tropHost, new Vector2(0.5f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
-            UIBuilder.IconAt(tropHost.transform, IconId.Trophy, 44f, UITheme.GoldMid, UITheme.OutlineNavy, new Vector2(0.5f, 0.5f), new Vector2(-52, 0));
-            rewardTrophyText = UIBuilder.StrokedText(tropHost.transform, "Text", TextAnchor.MiddleLeft, "+0", Color.white, 32);
-            UIBuilder.Rect(rewardTrophyText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(-20, 0), new Vector2(150, 44));
-            rewardCoinHost = coinHost;
-            rewardTrophyHost = tropHost;
+            GameObject pointsHost = UIBuilder.Child("LeaguePoints", rewards.transform);
+            UIBuilder.StretchRect(pointsHost, new Vector2(0.5f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
+            UIBuilder.IconAt(pointsHost.transform, IconId.Trophy, 44f, UITheme.GoldMid, UITheme.OutlineNavy, new Vector2(0.5f, 0.5f), new Vector2(-72, 0));
+            rewardPointsText = UIBuilder.StrokedText(pointsHost.transform, "Text", TextAnchor.MiddleLeft, "+0", Color.white, 32);
+            UIBuilder.Rect(rewardPointsText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0.5f), new Vector2(-40, 0), new Vector2(190, 44));
+            rewardPointsHost = pointsHost;
 
-            // Practice pays nothing, so the strip says so rather than showing "+0 / +0".
-            practiceNoteText = UIBuilder.StrokedText(rewards.transform, "PracticeNote", TextAnchor.MiddleCenter,
-                "PRACTICE  ·  NO REWARDS", UITheme.Cream, 32);
-            UIBuilder.Fill(practiceNoteText.gameObject);
-            practiceNoteText.gameObject.SetActive(false);
+            // An AI match never moves league points; the strip says so rather than showing "+0".
+            leagueUnchangedText = UIBuilder.StrokedText(rewards.transform, "LeagueUnchanged", TextAnchor.MiddleCenter,
+                "NO LEAGUE CHANGE", UITheme.Cream, 28);
+            UIBuilder.StretchRect(leagueUnchangedText.gameObject, new Vector2(0.5f, 0f), new Vector2(1f, 1f), new Vector2(8, 0), new Vector2(-12, 0));
+            UIBuilder.ClampLine(leagueUnchangedText);
+            leagueUnchangedText.gameObject.SetActive(false);
+
+            // --- Balance and league ---
+            resultStatusText = UIBuilder.Text(card.transform, "Status", TextAnchor.MiddleCenter, "", Color.white, 28, FontStyle.Bold);
+            resultStatusText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            UIBuilder.Rect(resultStatusText.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0, -494), new Vector2(660, 120));
 
             // --- Actions ---
             // There was no way out of this modal except PLAY AGAIN: the result screen was a dead end
             // that could only be escaped by starting another match and then forfeiting it.
             UIBuilder.ButtonRefs playAgain = UIBuilder.GreenButton(card.transform, "PLAY AGAIN", new Vector2(0, UITheme.ButtonHeight), UITheme.TypeButton, delegate
             {
-                // Routed through ScreenManager so a tour rematch is a new online search that
-                // re-charges the entry fee; practice restarts for free. Local restart is only a
-                // fallback for when the manager somehow isn't present.
+                // Routed through ScreenManager so a multiplayer rematch is a new search for an
+                // opponent; an AI match restarts straight away. Local restart is only a fallback for
+                // when the manager somehow isn't present.
                 if (ScreenManager.Instance != null)
                 {
                     ScreenManager.Instance.RequestRematch();
@@ -837,7 +848,7 @@ namespace Pickleball.UI
             UIBuilder.StretchRect(playAgain.root, new Vector2(0f, 0f), new Vector2(1f, 0f),
                 new Vector2(48, 44 + UITheme.ButtonHeightGhost + 16), new Vector2(-48, 44 + UITheme.ButtonHeightGhost + 16 + UITheme.ButtonHeight));
 
-            UIBuilder.ButtonRefs lobby = UIBuilder.GhostButton(card.transform, "BACK TO LOBBY", new Vector2(0, UITheme.ButtonHeightGhost), UITheme.TypeButtonSm, delegate
+            UIBuilder.ButtonRefs lobby = UIBuilder.GhostButton(card.transform, "HOME", new Vector2(0, UITheme.ButtonHeightGhost), UITheme.TypeButtonSm, delegate
             {
                 HideMatchResult();
                 if (ScreenManager.Instance != null) ScreenManager.Instance.ExitMatchToLobby();
@@ -994,34 +1005,50 @@ namespace Pickleball.UI
 
             if (winLoseScoreText != null) winLoseScoreText.text = finalPlayer + " - " + finalOpponent;
 
-            // The real payout ScreenManager.HandleMatchEnded computed and applied (tour reward table /
-            // performance bonus), not a hardcoded copy. Practice pays nothing and says so.
-            bool practice = ScreenManager.Instance == null ||
-                ScreenManager.Instance.CurrentMatchMode == Pickleball.Sim.MatchMode.Practice;
-            if (rewardCoinHost != null) rewardCoinHost.SetActive(!practice);
-            if (rewardTrophyHost != null) rewardTrophyHost.SetActive(!practice);
-            if (practiceNoteText != null) practiceNoteText.gameObject.SetActive(practice);
-            MatchReward reward = MetaGameState.LastMatchReward;
+            // The payout ScreenManager.HandleMatchEnded already settled (MetaGameState.CompleteMatch),
+            // not a hardcoded copy.
+            MatchResultSummary result = MetaGameState.LastMatchResult;
+            bool ranked = Pickleball.Sim.MatchModes.AffectsLeague(result.mode);
+            if (rewardPointsHost != null) rewardPointsHost.SetActive(ranked);
+            if (leagueUnchangedText != null) leagueUnchangedText.gameObject.SetActive(!ranked);
             if (rewardCoinText != null)
             {
-                rewardCoinText.text = "+" + reward.coins;
-                UICountUp.Attach(rewardCoinText, 0, reward.coins, 0.7f, "+");
+                rewardCoinText.text = "+" + result.coinsEarned;
+                UICountUp.Attach(rewardCoinText, 0, result.coinsEarned, 0.7f, "+");
             }
-            if (rewardTrophyText != null)
+            if (rewardPointsText != null)
             {
-                rewardTrophyText.text = (reward.trophies >= 0 ? "+" : "") + reward.trophies;
-                rewardTrophyText.color = reward.trophies >= 0 ? Color.white : UITheme.TextRivalRed;
+                int delta = result.LeaguePointsDelta;
+                rewardPointsText.text = (delta >= 0 ? "+" : "") + delta + " PTS";
+                rewardPointsText.color = delta >= 0 ? Color.white : UITheme.TextRivalRed;
             }
+            if (resultStatusText != null) resultStatusText.text = ResultStatus(result);
 
             RebuildModalPips(modalPlayerPipsRoot, finalPlayer, UITheme.TextPlayerBlue);
             RebuildModalPips(modalOpponentPipsRoot, finalOpponent, UITheme.TextRivalRed);
 
-            // A tour rematch is a new search that costs the entry fee again -- show it on the button so
-            // the charge isn't a surprise. Practice rematches are free and keep the plain label.
+            // A multiplayer rematch is a fresh search for a new random opponent, not the same one.
             if (playAgainLabel != null)
+                playAgainLabel.text = ranked ? "NEW MATCH" : "PLAY AGAIN";
+        }
+
+        /// <summary>The line under the rewards: the new coin balance, then where the player stands in
+        /// the league -- or, for an AI match, that the league is untouched.</summary>
+        private static string ResultStatus(MatchResultSummary result)
+        {
+            string balance = "BALANCE  " + result.coinBalance.ToString("N0") + " COINS";
+            if (!Pickleball.Sim.MatchModes.AffectsLeague(result.mode))
+                return balance + "\nLEAGUE POINTS UNCHANGED  \u00b7  AI MATCH";
+
+            string league = MetaGameState.LeagueName(result.leaguePointsAfter);
+            switch (result.leagueChange)
             {
-                int rematchFee = ScreenManager.Instance != null ? ScreenManager.Instance.PendingRematchFee : 0;
-                playAgainLabel.text = rematchFee > 0 ? "PLAY AGAIN  (-" + rematchFee + ")" : "PLAY AGAIN";
+                case Pickleball.Sim.LeagueChange.Promoted:
+                    return balance + "\nPROMOTED TO " + league + " LEAGUE!";
+                case Pickleball.Sim.LeagueChange.Relegated:
+                    return balance + "\nRELEGATED TO " + league + " LEAGUE";
+                default:
+                    return balance + "\n" + league + " LEAGUE  \u00b7  " + result.leaguePointsAfter.ToString("N0") + " PTS";
             }
         }
 

@@ -8,7 +8,7 @@ namespace Pickleball.Gameplay
     /// </summary>
     public static class MatchConfig
     {
-        /// <summary>Points needed to win (before the win-by-2 rule in Sim.RallyRules). Kept as the
+        /// <summary>Points needed to win -- first to this many, no two-point margin (Sim.RallyRules). Kept as the
         /// single source both RallyManager's default and GameplayHUD read.</summary>
         public const int PointsToWin = 7;
 

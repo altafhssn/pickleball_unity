@@ -32,20 +32,13 @@ namespace Pickleball.Sim
             return SimMath.Abs(x) <= CourtDimensions.HalfWidth && depth >= 0f &&
                 depth <= CourtDimensions.KitchenDepth;
         }
-        /// <summary>True win-by-two: reaching pointsToWin is not enough while the lead is only one.
-        /// There is deliberately no hidden cap, matching the rule shown to the player.</summary>
+        /// <summary>First to <paramref name="pointsToWin"/> wins outright: there is no two-point margin,
+        /// so 7-6 ends the match. Side-out scoring only ever moves one score at a time, so the two sides
+        /// can never reach the target together.</summary>
         public static bool IsMatchOver(int playerScore, int opponentScore, int pointsToWin, out bool playerWonMatch)
         {
-            int lead = playerScore - opponentScore;
-
-            if ((playerScore >= pointsToWin || opponentScore >= pointsToWin) && (lead >= 2 || lead <= -2))
-            {
-                playerWonMatch = lead >= 2;
-                return true;
-            }
-
-            playerWonMatch = false;
-            return false;
+            playerWonMatch = playerScore >= pointsToWin && playerScore > opponentScore;
+            return playerScore >= pointsToWin || opponentScore >= pointsToWin;
         }
     }
 }

@@ -212,7 +212,7 @@ namespace Pickleball.UI
         // TYPE SCALE (reference px)
         // ============================================================
         public const int TypeResultTitle = 150;   // VICTORY / DEFEAT
-        public const int TypeCallout     = 112;   // PERFECT! / GREAT!
+        public const int TypeCallout     = 80;    // PERFECT! / GREAT! -- a label beside play, not a banner over it
         public const int TypeLogo        = 132;   // boot wordmark
         public const int TypeScoreDigit  = 66;    // HUD plate score
         public const int TypeStatValue   = 64;

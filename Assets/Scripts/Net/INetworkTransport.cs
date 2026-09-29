@@ -16,8 +16,8 @@ namespace Pickleball.Net
         /// <summary>Photon server time at which gameplay becomes active on both clients.</summary>
         public double startServerTime;
         public string opponentName;
-        public int opponentTrophies;
-        public int opponentOverallRating;
+        /// <summary>Self-reported, for display -- the match card shows the opponent's league.</summary>
+        public int opponentLeaguePoints;
     }
 
     [Serializable]

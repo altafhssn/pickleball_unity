@@ -9,7 +9,7 @@ using Pickleball.Data;
 
 namespace Pickleball.UI
 {
-    // Editor-only visual regression sweep. Does not invoke purchase, upgrade or claim actions.
+    // Editor-only visual regression sweep. Does not invoke upgrade, ad or reward actions.
     public class UITextLayoutAudit : MonoBehaviour
     {
         public static bool Done;
@@ -20,17 +20,12 @@ namespace Pickleball.UI
         {
             var mgr = ScreenManager.Instance;
             var flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            typeof(ScreenManager).GetField("selectedGear", flags).SetValue(mgr, MetaGameState.Gear[0]);
-            typeof(ScreenManager).GetField("selectedBag", flags).SetValue(mgr, int.MaxValue);
             var rows = new List<string>();
             string dir = "output/text-audit/" + Screen.width + "x" + Screen.height;
             Directory.CreateDirectory(dir);
-            var screens = new[] { ScreenId.Boot, ScreenId.Lobby, ScreenId.PlayMode, ScreenId.Practice, ScreenId.TourSelect,
-                ScreenId.BagInventory, ScreenId.GearLoadout, ScreenId.GearCatalog, ScreenId.GearDetail,
-                ScreenId.GearUpgradeReveal, ScreenId.League, ScreenId.SeasonPass, ScreenId.Shop,
-                ScreenId.Settings, ScreenId.Account, ScreenId.Purchase, ScreenId.ProfileRecovery,
-                ScreenId.Tutorial, ScreenId.StartupStanding, ScreenId.StartupLeagueResult,
-                ScreenId.SeasonComplete, ScreenId.ChestOpening, ScreenId.Matchmaking, ScreenId.MatchIntro };
+            var screens = new[] { ScreenId.Boot, ScreenId.Lobby, ScreenId.League, ScreenId.GearLoadout,
+                ScreenId.Settings, ScreenId.Account, ScreenId.ProfileRecovery, ScreenId.Tutorial,
+                ScreenId.Matchmaking, ScreenId.MatchIntro };
             foreach (var screen in screens)
             {
                 mgr.Show(screen, false);
@@ -38,7 +33,7 @@ namespace Pickleball.UI
                 // Some reference-board screens resolve their fit one LateUpdate after the screen
                 // transition. A little headroom keeps captures deterministic on a busy editor.
                 yield return new WaitForSecondsRealtime(.75f);
-                // Let the tour search run long enough to show its PRACTICE VS AI INSTEAD offer.
+                // Let the search run long enough to show its PLAY WITH AI INSTEAD offer.
                 if (screen == ScreenId.Matchmaking) yield return new WaitForSecondsRealtime(10.5f);
                 yield return new WaitForEndOfFrame();
                 Canvas.ForceUpdateCanvases();
@@ -71,27 +66,36 @@ namespace Pickleball.UI
             yield return new WaitForEndOfFrame();
             Capture((GameObject)typeof(GameplayHUD).GetField("canvasRoot", flags).GetValue(GameplayHUD.Instance), "MatchResult", dir, rows);
 
-            // EnterMatch is always practice. The same states read differently in a tour match
-            // (QUIT MATCH, the trophy penalty, the rewards strip), so capture those too. Only the
-            // mode flag changes: no forfeit, reward or fee is applied.
+            // EnterMatch is always an AI match. The same states read differently in a multiplayer
+            // match (QUIT MATCH, the league-point penalty, the rewards strip), so capture those too.
+            // Only the mode flag and the displayed summary change: no forfeit or reward is applied.
             FieldInfo modeField = typeof(ScreenManager).GetField("matchMode", flags);
-            modeField.SetValue(mgr, Pickleball.Sim.MatchMode.Tour);
+            modeField.SetValue(mgr, Pickleball.Sim.MatchMode.Multiplayer);
+            PropertyInfo resultProperty = typeof(MetaGameState).GetProperty("LastMatchResult");
+            object realResult = resultProperty.GetValue(null);
+            resultProperty.GetSetMethod(true).Invoke(null, new object[] { new MatchResultSummary
+            {
+                mode = Pickleball.Sim.MatchMode.Multiplayer, won = true, playerScore = 7, opponentScore = 6,
+                coinsEarned = 70, coinBalance = MetaGameState.Coins, leaguePointsBefore = 240, leaguePointsAfter = 265,
+                leagueChange = Pickleball.Sim.LeagueChange.Promoted,
+            } });
             GameplayHUD.Instance.HideMatchResult();
             mgr.ShowPause();
             yield return new WaitForSecondsRealtime(.3f);
             yield return new WaitForEndOfFrame();
-            Capture((GameObject)typeof(ScreenManager).GetField("currentScreenGO", flags).GetValue(mgr), "PauseTour", dir, rows);
+            Capture((GameObject)typeof(ScreenManager).GetField("currentScreenGO", flags).GetValue(mgr), "PauseMultiplayer", dir, rows);
             mgr.ConfirmForfeit();
             yield return new WaitForSecondsRealtime(.3f);
             yield return new WaitForEndOfFrame();
-            Capture((GameObject)typeof(ScreenManager).GetField("modalGO", flags).GetValue(mgr), "ConfirmationTour", dir, rows);
+            Capture((GameObject)typeof(ScreenManager).GetField("modalGO", flags).GetValue(mgr), "ConfirmationMultiplayer", dir, rows);
             mgr.DismissModal();
             mgr.ResumeFromPause();
             GameplayHUD.Instance.ShowMatchResult(true);
             yield return new WaitForSecondsRealtime(.3f);
             yield return new WaitForEndOfFrame();
-            Capture((GameObject)typeof(GameplayHUD).GetField("canvasRoot", flags).GetValue(GameplayHUD.Instance), "MatchResultTour", dir, rows);
-            modeField.SetValue(mgr, Pickleball.Sim.MatchMode.Practice);
+            Capture((GameObject)typeof(GameplayHUD).GetField("canvasRoot", flags).GetValue(GameplayHUD.Instance), "MatchResultMultiplayer", dir, rows);
+            modeField.SetValue(mgr, Pickleball.Sim.MatchMode.AI);
+            resultProperty.GetSetMethod(true).Invoke(null, new object[] { realResult });
 
             Report = string.Join("\n", rows.ToArray());
             File.WriteAllText(dir + "/findings.txt", Report);

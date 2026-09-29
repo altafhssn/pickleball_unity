@@ -20,7 +20,7 @@ namespace Pickleball.UI
     {
         // Board coordinates (390x844).
         private const float TitleY = 122f;
-        private const float TourY = 172f;
+        private const float LeagueY = 172f;
         private const float PulseY = 368f;
         private const float StatusY = 466f;
         private const float SubStatusY = 494f;
@@ -28,10 +28,11 @@ namespace Pickleball.UI
         private static readonly float[] RingDiameters = { 304f, 217f, 130f };
         private static readonly float[] RingAlphas = { 0.15f, 0.30f, 0.55f };
 
-        /// <summary>How long a tour search runs before the screen offers practice instead. Nobody
-        /// may be online to pair with, and there is no bot backfill.</summary>
-        private const float PracticeOfferSeconds = 10f;
-        private const float PracticeOfferY = 650f;
+        /// <summary>How long a search runs before the screen offers to play the AI instead. Nobody
+        /// in the league may be online, and no bot is ever substituted for a ranked opponent -- the
+        /// switch is the player's choice, and an AI match never counts for the league.</summary>
+        private const float AiOfferSeconds = 10f;
+        private const float AiOfferY = 650f;
 
         public static GameObject Build(Transform parent, ScreenManager mgr)
         {
@@ -42,15 +43,15 @@ namespace Pickleball.UI
             GameObject board = PSKit.BoardHost(safe);
 
             Text title = PSKit.Display(board.transform, "Title", TextAnchor.MiddleCenter,
-                "TOUR MATCH", UITheme.Volt, UITheme.TypeHeroTitle);
+                "RANKED MATCH", UITheme.Volt, UITheme.TypeHeroTitle);
             PSKit.BoardRow(title.gameObject, TitleY, 70f, 20f);
             UIBuilder.ClampLine(title, 40);
 
-            TourInfo tour = MetaGameState.CurrentTour;
-            Text tourName = PSKit.Body(board.transform, "Tour", TextAnchor.MiddleCenter,
-                "TOUR " + (MetaGameState.CurrentTourIndex + 1) + "  ·  " + tour.name, UITheme.InkOnLight, 34);
-            PSKit.BoardRow(tourName.gameObject, TourY, 30f, 20f);
-            UIBuilder.ClampLine(tourName, 22);
+            Text league = PSKit.Body(board.transform, "League", TextAnchor.MiddleCenter,
+                MetaGameState.CurrentLeague.Name + " LEAGUE  ·  SINGLES  ·  FIRST TO " + Pickleball.Gameplay.MatchConfig.PointsToWin,
+                UITheme.InkOnLight, 34);
+            PSKit.BoardRow(league.gameObject, LeagueY, 30f, 20f);
+            UIBuilder.ClampLine(league, 22);
 
             // ---- Pulse ----
             GameObject pulse = UIBuilder.Child("Pulse", board.transform);
@@ -82,7 +83,7 @@ namespace Pickleball.UI
             UIBuilder.ClampLine(status, 26);
 
             Text subStatus = PSKit.Body(board.transform, "SubStatus", TextAnchor.MiddleCenter,
-                "This usually takes a few seconds", UITheme.InkOnLight, 34);
+                "Looking for a player in your league", UITheme.InkOnLight, 34);
             PSKit.BoardRow(subStatus.gameObject, SubStatusY, 34f, 16f);
             UIBuilder.ClampLine(subStatus, 22);
 
@@ -100,26 +101,25 @@ namespace Pickleball.UI
             dashImg.color = UITheme.InkOnLightDim;
             dashImg.raycastTarget = false;
 
-            UIBuilder.RunOnScreen(root, OfferPracticeAfter(board.transform, mgr));
+            UIBuilder.RunOnScreen(root, OfferAiAfter(board.transform, mgr));
 
 #if PHOTON_UNITY_NETWORKING
             BeginRealMatchmaking(root, mgr, status, subStatus);
 #else
-            // Tours are online-only; a build without Photon has nobody to search for.
+            // Multiplayer is online-only; a build without Photon has nobody to search for.
             mgr.MatchmakingFailed();
 #endif
             return root;
         }
 
-        /// <summary>After a while with nobody found, offer to leave the search (the entry fee is
-        /// refunded) and practise against the AI instead.</summary>
-        private static IEnumerator OfferPracticeAfter(Transform board, ScreenManager mgr)
+        /// <summary>After a while with nobody found, offer to leave the search and play the AI instead.</summary>
+        private static IEnumerator OfferAiAfter(Transform board, ScreenManager mgr)
         {
-            yield return new WaitForSecondsRealtime(PracticeOfferSeconds);
+            yield return new WaitForSecondsRealtime(AiOfferSeconds);
             if (board == null) yield break;
-            Text practice = PSKit.TextButton(board, "PRACTICE VS AI INSTEAD", UITheme.InkOnLight, 40, mgr.PracticeInstead);
-            PSKit.BoardRow(practice.transform.parent.gameObject, PracticeOfferY, 44f);
-            UIFadeIn.Attach(practice.transform.parent.gameObject, 0.3f, 0f, 12f);
+            Text ai = PSKit.TextButton(board, "PLAY WITH AI INSTEAD", UITheme.InkOnLight, 40, mgr.PlayAiInstead);
+            PSKit.BoardRow(ai.transform.parent.gameObject, AiOfferY, 44f);
+            UIFadeIn.Attach(ai.transform.parent.gameObject, 0.3f, 0f, 12f);
         }
 
 #if PHOTON_UNITY_NETWORKING

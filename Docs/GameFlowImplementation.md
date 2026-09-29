@@ -22,6 +22,12 @@ Completed 8 September 2026. The UI extends the supplied reference style using th
 
 ## Match modes (2026-09-28)
 
+> **Superseded the same day by the launch scope in `Docs/LaunchScope.md`** (Pickleball Game Design
+> Document v1.0): Home offers Play with AI (gear-matched, coins for a win, no league points) and
+> Multiplayer (same-league, 70/30 coins, league points). Tours, practice levels, entry fees, bags,
+> gems, the season pass, the daily reward and the shop are out of the launch build. The section below
+> is kept as a record of the previous design.
+
 The AI is for practice only; tours are the competitive structure and are played online.
 
 - **Tour** (`Sim.MatchMode.Tour`): pick a stage in Tour Select, pay its entry fee, and play a live opponent over Photon. A win pays the stage's coins and trophies, season XP, a Match Bag and one tour win (a Tour Crate on clearing the stage). A loss costs about half the stage's trophies; a forfeit costs 5 more. Tours replace the old Ranked queue, so League's button now opens Tour Select. Opponents are not filtered by stage; the whole pool shares one queue.

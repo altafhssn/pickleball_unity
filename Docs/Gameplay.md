@@ -103,8 +103,9 @@ from the quality callout so a Miss can show both. Wired to:
 
 ## 7. Rules
 
-- **Win by 2** (`Sim.RallyRules.IsMatchOver`): reaching `pointsToWin` needs a 2-point lead; a hard cap
-  at `pointsToWin + 4` still ends a runaway deuce.
+- **First to 7, no two-point margin** (`Sim.RallyRules.IsMatchOver`, 2026-09-28): the first side to
+  reach `pointsToWin` wins at once, so 7-6 ends the match. Supersedes the earlier win-by-2 rule; see
+  `Docs/LaunchScope.md`.
 - **Kitchen / non-volley zone** (`MatchConfig.KitchenDepth = 2.1`): taking the ball out of the air
   while standing in the kitchen is a fault from shot 4 onward. Authority-resolved in PvP, same as the
   out-of-bounds check.
@@ -115,8 +116,8 @@ from the quality callout so a Miss can show both. Wired to:
   `timingScore` from swipe magnitude — a timid serve gets a low arc that can fault in the net.
   Flight time is `Lerp(1.9, 1.3, power)` (× the serve-stat multiplier) — roughly in line with the
   AI's serve over the same distance. The earlier 2.1–2.9 s range made the serve visibly crawl.
-- Full side-out scoring (serve-only points, side changes) was **not** done — it touches the whole PvP
-  protocol and match-length balance. Deliberate arcade choice: every rally is still a point.
+- **Side-out scoring** (`Sim.RallyRules.ResolveRally`): only the server scores; a receiver winning the
+  rally wins the serve back.
 
 ## 8. Juice bugs
 

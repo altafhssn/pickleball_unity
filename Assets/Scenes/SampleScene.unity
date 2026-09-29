@@ -1881,8 +1881,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.4539905, y: 0, z: 0, w: 0.8910065}
-  m_LocalPosition: {x: 0, y: 22, z: -15.5}
+  m_LocalRotation: {x: 0.309017, y: 0, z: 0, w: 0.95105654}
+  m_LocalPosition: {x: 0, y: 13, z: -19.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1944,10 +1944,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 44453584255e4704f867ac5f4dfa424d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pickleball.Gameplay.CameraController
-  offsetFromCourt: {x: 0, y: 22, z: -15.5}
-  lookAtRotation: {x: 54, y: 0, z: 0}
-  xTrackingFactor: 0.1
-  maxHorizontalPan: 0.9
+  offsetFromCourt: {x: 0, y: 13, z: -19.5}
+  lookAtRotation: {x: 36, y: 0, z: 0}
+  xTrackingFactor: 0.55
+  maxHorizontalPan: 2.8
   smoothSpeed: 4
   playerTransform: {fileID: 1311419925}
   ballTransform: {fileID: 195557919}
@@ -6584,10 +6584,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pickleball.Gameplay.PlayerController
   moveSpeed: 6
-  homePosition: {x: 0, y: 1, z: -6}
+  homePosition: {x: 0, y: 1, z: -7.6}
   strikeZoneOffsetZ: -0.5
   baseMissReachDistance: 1.6
-  readyPositionDepth: -5.2
+  readyPositionDepth: -7.4
   ballController: {fileID: 195557915}
 --- !u!23 &1311419922
 MeshRenderer:
@@ -7951,9 +7951,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81b7328f052e9b445a717dc30b7b0844, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Pickleball.Gameplay.OpponentAI
-  difficulty: 1
   skill: 0.45
-  homePosition: {x: 0, y: 1, z: 6}
+  homePosition: {x: 0, y: 1, z: 7.4}
   ballController: {fileID: 195557915}
 --- !u!23 &1511713944
 MeshRenderer:

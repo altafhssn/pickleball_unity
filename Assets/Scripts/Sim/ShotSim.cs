@@ -29,82 +29,78 @@ namespace Pickleball.Sim
     /// </summary>
     public static class ShotSim
     {
-        /// <summary>Full power requires both a deliberate stroke length and speed. A short
-        /// one-frame flick must stay soft, regardless of its apparent speed. Distances are in
-        /// DPI- and sensitivity-adjusted reference pixels; holding never charges a shot.</summary>
-        public static float GesturePower(float referenceDistance, float seconds, float fullPowerSwipeSpeed = 1200f)
+        // ============================================================
+        // The swipe's three controls. A stroke has three measurable properties and each drives one
+        // thing, so the player controls all three independently:
+        //   direction  -- its angle (SwipeGesture.AimDirection): where across the court
+        //   placement  -- its length (SwingDepth): how deep it lands
+        //   speed      -- how fast it was drawn (SwingPace): how hard the ball travels
+        // Distances are in DPI- and sensitivity-adjusted reference pixels.
+        // ============================================================
+
+        /// <summary>Stroke length that places a shot at full depth.</summary>
+        public const float FullDepthSwipe = 240f;
+
+        /// <summary>Shortest stroke that can reach full pace. A one- or two-frame flick's measured
+        /// speed is mostly sampling noise, so a tiny twitch stays soft whatever speed it reads.</summary>
+        public const float FullPaceMinSwipe = 100f;
+
+        /// <summary>Placement: how deep the shot lands, 0..1, from the stroke's length alone. A
+        /// short swipe lands short, a long one deep -- however fast it was drawn.</summary>
+        public static float SwingDepth(float referenceDistance) =>
+            SimMath.Clamp01(SimMath.Max(0f, referenceDistance) / FullDepthSwipe);
+
+        /// <summary>Speed: how hard the ball is struck, 0..1, from how fast the stroke was drawn --
+        /// independent of its length once it is past <see cref="FullPaceMinSwipe"/>. Holding never
+        /// charges a shot.</summary>
+        public static float SwingPace(float referenceDistance, float seconds, float fullPaceSwipeSpeed = 1200f)
         {
             float distance = SimMath.Max(0f, referenceDistance);
-            float distancePower = SimMath.Clamp01(distance / 240f);
             float speed = distance / SimMath.Max(0.01f, seconds);
-            float speedPower = SimMath.Clamp01(speed / SimMath.Max(1f, fullPowerSwipeSpeed));
-            return Math.Min(distancePower, speedPower);
+            return Math.Min(SimMath.Clamp01(speed / SimMath.Max(1f, fullPaceSwipeSpeed)),
+                SimMath.Clamp01(distance / FullPaceMinSwipe));
         }
-        /// <summary>How far past the net (in Z) a ball must land to count as in. bounds.min.Y is 0.5,
-        /// which the fault check used directly -- so a legal, tightly-placed dink landing 0.1-0.5 past
-        /// the net was called OUT on both sides, a 1-unit dead strip straddling the net. Net clearance
-        /// (a ball that fails to cross at all) is enforced separately by BallController, so this only
-        /// needs to exclude a ball that lands short of the net line itself.</summary>
         // ============================================================
-        // Gear stat -> gameplay effect bindings (Docs/GearProgression.md#1-stats).
+        // Gear stat -> gameplay effect bindings. One stat per gear slot (see GearRules): the paddle's
+        // Power, the grip's Accuracy and the shoes' Speed.
         //
-        // Every binding has the same "effect = cap * stat / (stat + k)" diminishing-returns shape: a
-        // maxed loadout carries ~17x the raw stat total of a starter, but this keeps the actual
-        // gameplay advantage capped at a few tens of percent, which is what makes Photon PvP playable
-        // across a wide gear spread. These are pure, stateless, and only ever read a LoadoutStats the
-        // caller already resolved -- ShotSim still never touches MetaGameState/GearCatalog itself.
+        // Every binding has the same "effect = cap * stat / (stat + k)" diminishing-returns shape, so
+        // a fully upgraded slot is a clear edge but never a guaranteed win. These are pure and
+        // stateless and only ever read a LoadoutStats the caller already resolved -- ShotSim never
+        // touches MetaGameState itself. The AI plays with the player's own LoadoutStats, so both sides
+        // run through exactly these curves.
         // ============================================================
         private static float DrEffect(float stat, float capFraction, float k) => capFraction * stat / (stat + k);
 
-        /// <summary>Power: ball arrives faster. Multiplies a shot's final duration; capped at 22%.</summary>
+        /// <summary>Power (paddle): the ball arrives faster. Multiplies a shot's -- including a
+        /// serve's -- flight time; capped at 22%.</summary>
         public static float PowerDurationMultiplier(float power) => 1f - DrEffect(power, 0.22f, 120f);
 
-        /// <summary>Control: shots land where aimed. Multiplies CalculateTargetPosition's scatter
-        /// term; capped at 45%.</summary>
-        public static float ControlScatterMultiplier(float control) => 1f - DrEffect(control, 0.45f, 150f);
+        /// <summary>Accuracy (grip): shots land where aimed. Multiplies CalculateTargetPosition's
+        /// scatter term; capped at 45%.</summary>
+        public static float AccuracyScatterMultiplier(float accuracy) => 1f - DrEffect(accuracy, 0.45f, 150f);
 
-        /// <summary>Spin: harder kick/skid off the bounce. Multiplies spinRate, and (for Topspin/Slice
-        /// only) how far bounceMultiplier deviates from 1; capped at +40%.</summary>
-        public static float SpinMultiplier(float spin) => 1f + DrEffect(spin, 0.40f, 130f);
-
-        /// <summary>Serve: free points. Multiplies a serve's duration; capped at 18%. Not consumed by
-        /// EvaluateAndBuildShot -- both PlayerController.ExecuteServe and OpponentAI.EnterServeMode
-        /// build their ShotData directly rather than through the sim (a pre-existing asymmetry, not
-        /// introduced here), so the caller applies this to its own serve duration.</summary>
-        public static float ServeDurationMultiplier(float serve) => 1f - DrEffect(serve, 0.18f, 110f);
-
-        /// <summary>Speed: reach balls you couldn't before. Not consumed by anything in this file --
-        /// PlayerController applies these directly to its own move speed and miss-reach distance,
-        /// since neither touches ball physics. Kept here anyway so every gear-effect constant lives in
-        /// one place. Move-speed multiplier capped at +30%.</summary>
+        /// <summary>Speed (shoes): the player covers the court faster. Not consumed by anything in this
+        /// file -- PlayerController and OpponentAI apply it to their own movement, since it doesn't
+        /// touch ball physics. Kept here so every gear-effect constant lives in one place. Capped at +30%.</summary>
         public static float SpeedMoveMultiplier(float speed) => 1f + DrEffect(speed, 0.30f, 140f);
 
-        /// <summary>Speed's reach bonus: extra world units added to the miss-reach distance; capped at 0.35.</summary>
+        /// <summary>Speed's reach bonus: extra world units added to the contact reach; capped at 0.35.</summary>
         public static float SpeedReachBonus(float speed) => DrEffect(speed, 0.35f, 140f);
 
-        // Stamina resists per-rally quality decay. "Per-rally" is read as the rally's total shot
-        // count (both sides combined) -- the same currentRallyCount RallyManager already tracks --
-        // not the hitter's own personal swing count, since that needs no new tracking and matches
-        // the doc's "long rallies" framing (both players are tiring, not just one).
-        private const float StaminaBaseOnsetShot = 6f;
-        private const float StaminaOnsetRange = 6f; // cap: onset shot 6 (no stamina) .. 12 (maxed)
-        private const float StaminaK = 100f;
+        // Long rallies wear both players down. "Per-rally" is the rally's total shot count (both
+        // sides combined) -- the same currentRallyCount RallyManager already tracks. This is a match
+        // rule, not a gear stat: it applies to both sides identically.
+        public const int FatigueOnsetShot = 6;
         private const float FatigueDecayPerShotPastOnset = 0.05f;
         private const float FatigueMaxDecay = 0.35f; // quality never drops below 65% of its pre-fatigue value
 
-        /// <summary>The rally shot index (1 = the serve) at which fatigue starts cutting into quality
-        /// for a hitter with this much Stamina.</summary>
-        public static int StaminaOnsetShot(float stamina)
+        /// <summary>1 up to <see cref="FatigueOnsetShot"/>; decays 5%/shot past it, floored at a 35%
+        /// total cut. A shotIndexInRally of 0 (the default for a caller that doesn't pass one) is
+        /// always before onset, so this is a no-op unless a real rally position is supplied.</summary>
+        public static float RallyFatigueMultiplier(int shotIndexInRally)
         {
-            return (int)Math.Round(StaminaBaseOnsetShot + StaminaOnsetRange * stamina / (stamina + StaminaK), MidpointRounding.AwayFromZero);
-        }
-
-        /// <summary>1 before onsetShotIndex; decays 5%/shot past it, floored at a 35% total cut.
-        /// A shotIndexInRally of 0 (the default for any caller that doesn't pass one, e.g. the AI)
-        /// is always before onset, so this is a no-op unless a real rally position is supplied.</summary>
-        public static float RallyFatigueMultiplier(int shotIndexInRally, int onsetShotIndex)
-        {
-            int shotsPastOnset = shotIndexInRally - onsetShotIndex;
+            int shotsPastOnset = shotIndexInRally - FatigueOnsetShot;
             if (shotsPastOnset <= 0) return 1f;
             return 1f - SimMath.Clamp(shotsPastOnset * FatigueDecayPerShotPastOnset, 0f, FatigueMaxDecay);
         }
@@ -145,11 +141,12 @@ namespace Pickleball.Sim
         public static Vector3 PredictTargetPosition(
             Vector3 startPos, Vector2 swipeVector, bool isPlayerHitting, ShotType shotType, CourtBounds bounds)
         {
-            float power = SimMath.Clamp01(swipeVector.Length());
-            Vector2 direction = power > 0.001f ? Vector2.Normalize(swipeVector) : Vector2.Zero;
+            // The swipe vector is direction x placement: its length is how deep the shot lands.
+            float depth = SimMath.Clamp01(swipeVector.Length());
+            Vector2 direction = depth > 0.001f ? Vector2.Normalize(swipeVector) : Vector2.Zero;
             float targetX = SimMath.Clamp(direction.X * 4.2f, bounds.min.X, bounds.max.X);
 
-            float depthRatio = isPlayerHitting ? power : 1f - power;
+            float depthRatio = isPlayerHitting ? depth : 1f - depth;
 
             float targetZ;
             if (shotType == ShotType.Dink)
@@ -173,7 +170,7 @@ namespace Pickleball.Sim
             }
             else
             {
-                targetZ = (isPlayerHitting ? 1f : -1f) * SimMath.Lerp(0.8f, bounds.max.Y - 0.3f, power);
+                targetZ = (isPlayerHitting ? 1f : -1f) * SimMath.Lerp(0.8f, bounds.max.Y - 0.3f, depth);
             }
 
             return new Vector3(targetX, 0f, targetZ);
@@ -185,7 +182,7 @@ namespace Pickleball.Sim
         {
             Vector3 aimed = PredictTargetPosition(startPos, swipeVector, isPlayerHitting, shotType, bounds);
 
-            float inaccuracy = (1.0f - shotQuality) * 1.2f * ControlScatterMultiplier(loadout.control);
+            float inaccuracy = (1.0f - shotQuality) * 1.2f * AccuracyScatterMultiplier(loadout.accuracy);
             float targetX = aimed.X + rng.NextRange(-inaccuracy, inaccuracy);
             float targetZ = aimed.Z + rng.NextRange(-inaccuracy, inaccuracy);
             if (shotType == ShotType.Dink)
@@ -206,7 +203,8 @@ namespace Pickleball.Sim
             float defaultArcHeight,
             ref DeterministicRandom rng,
             LoadoutStats loadout = default(LoadoutStats),
-            int shotIndexInRally = 0)
+            int shotIndexInRally = 0,
+            float pace01 = -1f)
         {
             float timingScore = CalculateTimingScore(timingError, out ShotQuality quality);
 
@@ -215,16 +213,17 @@ namespace Pickleball.Sim
 
             // Strength is intent, not accuracy: a perfectly timed gentle push is a good shot.
             float swipeAccuracy = 1f;
-            float power = SimMath.Clamp01(swipeVector.Length());
+            // The swipe vector's length is placement (depth); pace is how hard it is struck. A caller
+            // with only one strength value (the AI) passes none and gets pace = depth.
+            float depth = SimMath.Clamp01(swipeVector.Length());
+            float pace = pace01 >= 0f ? SimMath.Clamp01(pace01) : depth;
 
             float compositeScore = (timingScore * 0.50f) + (positionScore * 0.30f) + (swipeAccuracy * 0.20f);
 
-            // Stamina: a shotIndexInRally of 0 (the default) is always below StaminaOnsetShot's
-            // minimum of 6, so this is a no-op for any caller that doesn't pass a real rally
-            // position -- quality itself (the timing-only Perfect/Great/.../Miss readout above)
+            // Rally fatigue: quality itself (the timing-only Perfect/Great/.../Miss readout above)
             // deliberately does not decay; only the mechanical compositeScore that drives accuracy
             // and duration does, so "quality" keeps reading as pure swing-timing feedback.
-            compositeScore *= RallyFatigueMultiplier(shotIndexInRally, StaminaOnsetShot(loadout.stamina));
+            compositeScore *= RallyFatigueMultiplier(shotIndexInRally);
             compositeScore = SimMath.Clamp01(compositeScore);
 
             Vector3 targetPos = CalculateTargetPosition(startPos, swipeVector, compositeScore, hitterId == 0, shotType, bounds, ref rng, loadout);
@@ -285,24 +284,16 @@ namespace Pickleball.Sim
                 case ShotType.Topspin: speed = SimMath.Lerp(12f, 16f, compositeScore); break;
                 default: speed = SimMath.Lerp(10f, 13f, compositeScore); break;
             }
-            speed *= SimMath.Lerp(0.55f, 1f, power);
+            speed *= SimMath.Lerp(0.55f, 1f, pace);
             float duration = SimMath.Clamp(groundTravel.Length() / speed,
                 shotType == ShotType.Lob ? 1.45f : 0.42f, 2.9f);
             // Even a baseline drop needs enough lift to clear the net near its landing point.
-            float height = CalculateArcHeight(startPos, targetPos, shotType, defaultArcHeight);
+            float height = CalculateArcHeight(startPos, targetPos, shotType, defaultArcHeight, pace);
 
-            // Spin: harder kick/skid -- scales
-            // spinRate uniformly, and additionally scales how far bounceMultiplier deviates from 1
-            // for the two shot types whose bounce is spin-driven (Topspin's kick, Slice's skid); the
-            // other types' bounceMult is a fixed physical property of the shot shape, not spin, so it
-            // is left alone.
+            // Power speeds up the attacking strokes. Dinks and lobs are touch shots whose value is
+            // their softness and hang time, so a stronger paddle leaves them alone.
             if (shotType != ShotType.Dink && shotType != ShotType.Lob)
                 duration *= PowerDurationMultiplier(loadout.power);
-            spin *= SpinMultiplier(loadout.spin);
-            if (shotType == ShotType.Topspin || shotType == ShotType.Slice)
-            {
-                bounceMult = 1f + (bounceMult - 1f) * SpinMultiplier(loadout.spin);
-            }
 
             return new ShotData(hitterId, shotType, startPos, targetPos, height, duration)
             {
@@ -322,7 +313,10 @@ namespace Pickleball.Sim
             return SimMath.Abs(pos.X) <= bounds.max.X && absZ >= CourtDimensions.NetLineMargin && absZ <= bounds.max.Y;
         }
 
-        public static float CalculateArcHeight(Vector3 start, Vector3 target, ShotType type, float defaultArc = 2.5f)
+        /// <param name="pace01">How hard the drive was struck. A soft drive loops higher on its way to
+        /// the same spot; a hard one stays flat. Touch shots (dink, lob, smash, serve) keep their shape.</param>
+        public static float CalculateArcHeight(Vector3 start, Vector3 target, ShotType type, float defaultArc = 2.5f,
+            float pace01 = 1f)
         {
             float height;
             switch (type)
@@ -335,6 +329,8 @@ namespace Pickleball.Sim
                 case ShotType.Serve: height = 2f; break;
                 default: height = SimMath.Clamp(defaultArc * 0.42f, 0.8f, 1.2f); break;
             }
+            if (type == ShotType.Flat || type == ShotType.Topspin || type == ShotType.Slice)
+                height *= SimMath.Lerp(1.5f, 1f, SimMath.Clamp01(pace01));
             return SimMath.Max(height, BallFlight.ClearanceArc(start, target,
                 type == ShotType.Dink ? 1.12f : 1.06f));
         }

@@ -1,3 +1,7 @@
+// Retired from the launch build: this feature is outside the scope in Docs/LaunchScope.md
+// (Pickleball Game Design Document v1.0). The source is kept for reference and is not compiled;
+// PICKLEBALL_RETIRED_FEATURES is deliberately never defined.
+#if PICKLEBALL_RETIRED_FEATURES
 using System.Collections.Generic;
 using UnityEngine;
 using Pickleball.UI;
@@ -177,3 +181,4 @@ namespace Pickleball.Data
         }
     }
 }
+#endif

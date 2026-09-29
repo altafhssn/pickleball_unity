@@ -201,8 +201,10 @@ namespace Pickleball.Tests
 
             Assert.That(restedSeconds, Is.EqualTo(plainSeconds).Within(Frame + 0.001f));
             Assert.That(rested.Length(), Is.EqualTo(plain.Length()).Within(SwipeGesture.RestRadius));
-            Assert.That(ShotSim.GesturePower(rested.Length(), restedSeconds),
-                Is.EqualTo(ShotSim.GesturePower(plain.Length(), plainSeconds)).Within(0.1f));
+            Assert.That(ShotSim.SwingPace(rested.Length(), restedSeconds),
+                Is.EqualTo(ShotSim.SwingPace(plain.Length(), plainSeconds)).Within(0.1f));
+            Assert.That(ShotSim.SwingDepth(rested.Length()),
+                Is.EqualTo(ShotSim.SwingDepth(plain.Length())).Within(0.05f));
             // Measured from touch-down, a 150 ms rest already turned this drive into a lob.
             Assert.That(SwipeGesture.Classify(plain, plainSeconds), Is.EqualTo(ShotType.Topspin));
             Assert.That(SwipeGesture.Classify(rested, restedSeconds), Is.EqualTo(ShotType.Topspin));

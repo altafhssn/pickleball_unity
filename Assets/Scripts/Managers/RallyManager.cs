@@ -99,8 +99,8 @@ namespace Pickleball.Gameplay
         public MatchState State { get; private set; } = MatchState.Serving;
 
         /// <summary>Shots resolved so far this rally (the serve counts as 1). Read by PlayerController
-        /// to place its next shot on the fatigue curve ShotSim.RallyFatigueMultiplier applies for the
-        /// Stamina stat -- see Docs/GearProgression.md#1-stats. Reset to 0 in StartNewServe.</summary>
+        /// to place its next shot on the rally-fatigue curve ShotSim.RallyFatigueMultiplier applies.
+        /// Reset to 0 in StartNewServe.</summary>
         public int CurrentRallyCount => currentRallyCount;
 
         public event Action<int, int> OnScoreUpdated;

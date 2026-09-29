@@ -22,16 +22,14 @@ namespace Pickleball.Tests
         [Test]
         public void ReceivingAtGamePointNeedsSideOutThenAServicePoint()
         {
-            int player = 10, opponent = 9;
+            int player = 6, opponent = 5;
             bool serving = false;
             RallyRules.ResolveRally(true, ref serving, ref player, ref opponent);
-            Assert.That(player, Is.EqualTo(10));
-            Assert.That(RallyRules.IsMatchOver(player, opponent, 11, out _), Is.False);
+            Assert.That(player, Is.EqualTo(6));
+            Assert.That(RallyRules.IsMatchOver(player, opponent, 7, out _), Is.False);
             RallyRules.ResolveRally(true, ref serving, ref player, ref opponent);
-            Assert.That(RallyRules.IsMatchOver(player, opponent, 11, out bool won), Is.True);
+            Assert.That(RallyRules.IsMatchOver(player, opponent, 7, out bool won), Is.True);
             Assert.That(won, Is.True);
-            Assert.That(RallyRules.IsMatchOver(11, 10, 11, out _), Is.False);
-            Assert.That(RallyRules.IsMatchOver(12, 10, 11, out _), Is.True);
         }
 
         [TestCase(0)]
@@ -104,13 +102,35 @@ namespace Pickleball.Tests
                 CourtDimensions.PlayBounds), Is.False);
         }
 
-        [Test]
-        public void MatchNeverEndsWithoutTwoPointLead()
+        [TestCase(7, 6, true)]
+        [TestCase(6, 7, false)]
+        [TestCase(7, 0, true)]
+        [TestCase(0, 7, false)]
+        public void FirstToSevenWinsWithoutATwoPointMargin(int player, int opponent, bool playerWins)
         {
-            bool playerWon;
-            Assert.That(RallyRules.IsMatchOver(11, 10, 7, out playerWon), Is.False);
-            Assert.That(RallyRules.IsMatchOver(12, 10, 7, out playerWon), Is.True);
-            Assert.That(playerWon, Is.True);
+            Assert.That(RallyRules.IsMatchOver(player, opponent, 7, out bool playerWon), Is.True);
+            Assert.That(playerWon, Is.EqualTo(playerWins));
+        }
+
+        [TestCase(6, 6)]
+        [TestCase(6, 5)]
+        [TestCase(0, 0)]
+        public void MatchContinuesUntilSomeoneReachesSeven(int player, int opponent)
+        {
+            Assert.That(RallyRules.IsMatchOver(player, opponent, 7, out _), Is.False);
+        }
+
+        [Test]
+        public void ReceiverWinningARallyScoresNothing()
+        {
+            // At 6-6 with the opponent serving, a player rally win is a side out, not the match.
+            int player = 6, opponent = 6;
+            bool playerServing = false;
+            Assert.That(RallyRules.ResolveRally(true, ref playerServing, ref player, ref opponent), Is.False);
+            Assert.That(RallyRules.IsMatchOver(player, opponent, 7, out _), Is.False);
+            Assert.That(RallyRules.ResolveRally(true, ref playerServing, ref player, ref opponent), Is.True);
+            Assert.That(RallyRules.IsMatchOver(player, opponent, 7, out bool won), Is.True);
+            Assert.That(won, Is.True);
         }
     }
 }

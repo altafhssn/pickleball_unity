@@ -9,17 +9,20 @@ using Pickleball.Data;
 
 namespace Pickleball.Net
 {
-    /// <summary>Bootstraps a PvP match over Photon: connect, join-or-create a single shared room, and
-    /// once two players are present, have the room's MasterClient mint a match seed and hand it to the
-    /// other player. This is a deliberate placeholder for real matchmaking (phase 3's trophy-bucketed
-    /// queue + bot backfill) -- there is exactly one room, first-come first-served, no rating, no wait
-    /// budget. It exists so phase 2's sync layer has something to actually connect two real clients
-    /// with today.</summary>
+    /// <summary>Ranked multiplayer matchmaking over Photon: connect, join a random open room in the
+    /// player's own league (or open one), and once two players are present, have the room's
+    /// MasterClient mint a match seed and hand it to the other player. The only filter is the league:
+    /// the opponent is whoever else in that league is searching. There is no bot backfill and the
+    /// league range never widens.</summary>
     public class PhotonQuickMatch : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         public const byte MatchStartEventCode = 1;
-        private const string ProtocolVersion = "pickleball-pvp-v4";
+        /// <summary>v5: first-to-7 with no two-point margin, and league-bucketed rooms. Clients on
+        /// different rules must never be paired, so the rule change bumps the version.</summary>
+        private const string ProtocolVersion = "pickleball-pvp-v5";
         private const string PropProtocol = "protocol";
+        /// <summary>Room property: the league index the room is for (Sim.LeagueRules.IndexFor).</summary>
+        private const string PropLeague = "league";
         private const int PointsToWin = Pickleball.Gameplay.MatchConfig.PointsToWin;
         private const double StartLeadSeconds = 6.25;
 
@@ -29,8 +32,8 @@ namespace Pickleball.Net
         public const int PlayerTtlMs = 15000;
 
         private const string PropName = "name";
-        private const string PropTrophies = "trophies";
-        private const string PropOvr = "ovr";
+        /// <summary>The player's league points. The key keeps its old wire name.</summary>
+        private const string PropLeaguePoints = "trophies";
 
         /// <summary>Fired once for whichever side of the handshake this client ended up on -- the
         /// caller (a match-start screen, eventually) hands both straight to
@@ -43,18 +46,8 @@ namespace Pickleball.Net
         public event Action OnSearching;
         public event Action<string> OnFailure;
 
-        // Docs/GearProgression.md#7-overall-rating-and-matchmaking: pairing must clamp to +/-15% OVR.
-        // There is exactly one shared room (see the class summary) rather than a real bucketed queue,
-        // so a hard, permanent reject risks a livelock between the only two players testing at once --
-        // instead the tolerance widens each time *this client* rejects an opponent this search, and
-        // gives up clamping after a few tries so a match is always eventually found. A real trophy+OVR
-        // bucketed queue (phase 3, per the class summary) would make this widening unnecessary.
-        private const double OvrTolerance = 0.15;
-        private const double OvrToleranceWidenPerRejection = 0.15;
-        private const int MaxOvrRejectionsBeforeAccepting = 4;
-        private int ovrRejectionCount;
-        private bool pendingOvrRequeue;
         private bool isDestroyed;
+        private int leagueIndex;
 
         private PhotonNetworkTransport transport;
         private bool matchStarted;
@@ -67,8 +60,7 @@ namespace Pickleball.Net
             matchStarted = false;
             searchFailed = false;
             searchStartedAt = Time.realtimeSinceStartup;
-            ovrRejectionCount = 0;
-            pendingOvrRequeue = false;
+            leagueIndex = MetaGameState.CurrentLeagueIndex;
             PhotonNetwork.AddCallbackTarget(this);
 
             PhotonNetwork.GameVersion = ProtocolVersion;
@@ -93,8 +85,7 @@ namespace Pickleball.Net
             var props = new Hashtable
             {
                 { PropName, MetaGameState.PlayerName },
-                { PropTrophies, MetaGameState.Trophies },
-                { PropOvr, MetaGameState.OverallRating },
+                { PropLeaguePoints, MetaGameState.LeaguePoints },
             };
             PhotonNetwork.LocalPlayer.SetCustomProperties(props);
         }
@@ -117,10 +108,11 @@ namespace Pickleball.Net
                 PlayerTtl = PlayerTtlMs,
                 EmptyRoomTtl = PlayerTtlMs,
                 CleanupCacheOnLeave = true,
-                CustomRoomProperties = new Hashtable { { PropProtocol, ProtocolVersion } },
-                CustomRoomPropertiesForLobby = new[] { PropProtocol },
+                CustomRoomProperties = new Hashtable { { PropProtocol, ProtocolVersion }, { PropLeague, leagueIndex } },
+                CustomRoomPropertiesForLobby = new[] { PropProtocol, PropLeague },
             };
-            var expected = new Hashtable { { PropProtocol, ProtocolVersion } };
+            // Only rooms for this league match; a new room is opened for it otherwise.
+            var expected = new Hashtable { { PropProtocol, ProtocolVersion }, { PropLeague, leagueIndex } };
             PhotonNetwork.JoinRandomOrCreateRoom(expected, 2, MatchmakingMode.FillRoom,
                 TypedLobby.Default, null, "pickleball-" + Guid.NewGuid().ToString("N"), roomOptions);
         }
@@ -150,20 +142,11 @@ namespace Pickleball.Net
             if (matchStarted) return;
             if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.CurrentRoom.PlayerCount < 2) return;
             // Only the master client mints the seed and announces it -- otherwise both players would
-            // race to pick one and disagree about which was authoritative. That also makes this the
-            // single, authoritative point for the OVR accept/reject decision: the non-master side
-            // never independently evaluates it, only reacts to whether MatchStartEventCode arrives.
+            // race to pick one and disagree about which was authoritative.
             if (!PhotonNetwork.IsMasterClient) return;
 
             Player opponent = FindOpponent();
             if (opponent == null || opponent.IsInactive) return;
-            if (opponent != null && !IsOvrAcceptable(opponent))
-            {
-                ovrRejectionCount++;
-                pendingOvrRequeue = true;
-                PhotonNetwork.LeaveRoom(false); // Requeue immediately; do not reserve a cancelled slot.
-                return;
-            }
 
             matchStarted = true;
             ulong seed = unchecked((ulong)Guid.NewGuid().GetHashCode() ^ (ulong)DateTime.UtcNow.Ticks);
@@ -177,34 +160,6 @@ namespace Pickleball.Net
                 new RaiseEventOptions { Receivers = ReceiverGroup.Others }, SendOptions.SendReliable);
 
             BeginLocalMatch(seed, startServerTime, localSideId: 0, localServesFirst: true, opponent);
-        }
-
-        /// <summary>True if opponent's published OVR is close enough to accept -- or if this client
-        /// has rejected enough opponents this search that it gives up clamping (see the tolerance
-        /// fields' comment). A degenerate 0-vs-0 comparison (no gear at all on either side, e.g. two
-        /// brand-new accounts) always passes rather than dividing by zero.</summary>
-        private bool IsOvrAcceptable(Player opponent)
-        {
-            if (ovrRejectionCount >= MaxOvrRejectionsBeforeAccepting) return true;
-            int opponentOvr = 0;
-            if (opponent.CustomProperties != null && opponent.CustomProperties.TryGetValue(PropOvr, out object o) && o is int oi)
-                opponentOvr = oi;
-
-            int localOvr = MetaGameState.OverallRating;
-            int hi = Math.Max(localOvr, opponentOvr);
-            int lo = Math.Min(localOvr, opponentOvr);
-            if (hi <= 0) return true;
-
-            double ratio = (hi - lo) / (double)hi;
-            double tolerance = OvrTolerance + (OvrToleranceWidenPerRejection * ovrRejectionCount);
-            return ratio <= tolerance;
-        }
-
-        public override void OnLeftRoom()
-        {
-            if (isDestroyed || !pendingOvrRequeue) return;
-            pendingOvrRequeue = false;
-            JoinQueue();
         }
 
         public void OnEvent(EventData photonEvent)
@@ -238,13 +193,11 @@ namespace Pickleball.Net
             transport = new PhotonNetworkTransport(opponentUserId, opponentActorNumber, localSideId, roomName);
 
             string oppName = "OPPONENT";
-            int oppTrophies = 0;
-            int oppOvr = 0;
+            int oppLeaguePoints = 0;
             if (opponent != null && opponent.CustomProperties != null)
             {
                 if (opponent.CustomProperties.TryGetValue(PropName, out object n) && n is string s && !string.IsNullOrEmpty(s)) oppName = s;
-                if (opponent.CustomProperties.TryGetValue(PropTrophies, out object t) && t is int ti) oppTrophies = ti;
-                if (opponent.CustomProperties.TryGetValue(PropOvr, out object o) && o is int oi) oppOvr = oi;
+                if (opponent.CustomProperties.TryGetValue(PropLeaguePoints, out object t) && t is int ti) oppLeaguePoints = ti;
             }
 
             var matchStart = new MatchStartMessage
@@ -256,8 +209,7 @@ namespace Pickleball.Net
                 pointsToWin = PointsToWin,
                 startServerTime = startServerTime,
                 opponentName = oppName,
-                opponentTrophies = oppTrophies,
-                opponentOverallRating = oppOvr,
+                opponentLeaguePoints = oppLeaguePoints,
             };
             OnMatchReady?.Invoke(transport, matchStart);
         }
@@ -295,11 +247,9 @@ namespace Pickleball.Net
 
         private void OnDestroy()
         {
-            // Set before LeaveRoom below so OnLeftRoom's requeue guard sees it even if Photon invokes
-            // the callback synchronously -- a requeue on a GameObject mid-teardown would just leak a
-            // JoinRandomOrCreateRoom call into nothing.
+            // Set before LeaveRoom below so a callback Photon invokes synchronously during teardown
+            // (OnJoinedRoom) sees it and does nothing.
             isDestroyed = true;
-            pendingOvrRequeue = false;
 
             // If the screen this is attached to gets torn down (player hit Cancel) before a match was
             // found, leave the room rather than abandoning it silently occupied.

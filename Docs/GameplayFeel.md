@@ -1,5 +1,45 @@
 # Pickleball game-feel pass
 
+## Reference comparison and control split (2026-09-28)
+
+Compared against a supplied 93-second swipe-tennis recording (`WhatsApp Video 2026-09-28 at 10.45.45 PM.mp4`,
+576x1280), frame-stepped at 6-10 fps, and against a scripted rally captured from our own game with a
+per-frame trace of ball, player and AI positions.
+
+| | Reference | Ours before | Ours now |
+|---|---|---|---|
+| Time between hits | ~1.5 s (tennis-size court) | 0.73 s (min 0.58) | 1.04 s (median 1.02) |
+| Typical contact | after the bounce, behind the baseline | volleyed from mid-court at 0.8-1.4 m | after the bounce, median 0.56 m |
+| Camera | low, behind the player, follows sideways | 22 m up, 54 degree pitch, fixed | 13 m up, 36 degree pitch, follows the player |
+| Far baseline / net / player's feet (screen height) | 27% / 42% / 73% | 26% / 52% / 72% (mid-court) | 27% / 45% / 73% |
+| Near half vs far half of the court on screen | ~2.1x | 1.5x | 1.9x |
+| Player height on screen | 8.6% | 3.4% | 8.6% |
+| Ball vs player height | ~0.1 | 0.15 (0.28 m ball) | 0.11 (0.2 m ball) |
+
+What the reference does with the gesture: movement is automatic (a white hit circle at the player's
+feet as the ball arrives), the swipe plays the shot, and feedback comes after contact -- a streak
+along the shot's direction, a small ring where it will land, and a timing bar beside the player.
+
+Changes:
+
+- **Three independent controls.** A swipe's angle is the direction, its length the placement (how
+  deep it lands, `ShotSim.SwingDepth`, full depth at 240 reference px) and its speed the pace (how
+  hard it travels, `ShotSim.SwingPace`, full pace at 1200 ref px/s). They used to share one number --
+  the lower of length and speed -- so a soft deep ball or a hard short one was impossible. Pace needs
+  100 ref px of stroke to reach full, so a tiny twitch stays soft. A soft drive loops higher to the
+  same spot. The swipe meter now reads SPEED; the landing circle shows the placement. The AI still
+  passes one strength value, which is used for both.
+- **Baseline positions.** Player ready depth -5.2 -> -7.4 and AI home 6 -> 7.4, recovering there
+  after a drive. From mid-court almost every ball was a volley and came back every 0.65 s.
+- **Camera** reframed as above, following the player sideways (xTrackingFactor 0.55, max pan 2.8).
+- **Proportions:** ball 0.28 -> 0.2 m; the shot-quality and miss callouts are smaller (112 -> 80,
+  58 -> 44) and sit below the net instead of over it; the aim marker stays a flat disc (it was scaled
+  into a tall cylinder, invisible only from the old top-down camera).
+
+Tests: `GameFeelTests` (direction, placement and speed independence), `LobGestureTests`,
+`MisfireTests` -- 172 EditMode tests pass. Not yet verified: human play on the tablet with these values.
+
+
 ## Control stability pass (2026-09-26)
 
 Power follow-up: gesture power is now capped by stroke length (240 reference pixels for full power) as well as speed. Previously a 50-pixel swipe in one frame saturated the speed-only calculation. It now produces at most 21% power; 120 reference pixels tops out at 50%. Preview and release use the same calculation. Speed tuning does not scale away the distance cap. All 114 EditMode tests passed, including short single-frame swipes at 30/60/120 Hz and graded short/medium/full power.

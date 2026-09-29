@@ -13,14 +13,15 @@ namespace Pickleball.Gameplay
     {
         [Header("Movement Settings")]
         [SerializeField] private float moveSpeed = 6.0f;
-        [SerializeField] private Vector3 homePosition = new Vector3(0f, 1.0f, -6f);
+        [SerializeField] private Vector3 homePosition = new Vector3(0f, 1.0f, -7.6f);
         [SerializeField] private float strikeZoneOffsetZ = -0.5f;
         [SerializeField] private float baseMissReachDistance = 1.6f;
-        [Tooltip("Neutral mid-court depth the player recovers to between shots. Singles play is " +
-                 "baseline/mid-court, not net-camping: with no partner to cover a wide pass, a player " +
-                 "who holds the kitchen line after a drive or lob just gets beaten down the line. Only " +
-                 "a live dink exchange shades further forward than this.")]
-        [SerializeField] private float readyPositionDepth = -5.2f;
+        [Tooltip("Neutral depth the player recovers to between shots: just inside the baseline, so a " +
+                 "deep ball bounces in front and is struck on the way up. From mid-court (-5.2) nearly " +
+                 "every ball was volleyed out of the air and the ball came back every 0.65 s -- too quick " +
+                 "to read, aim and swipe. From here it is about every 1.0 s. Only a live dink exchange " +
+                 "shades further forward.")]
+        [SerializeField] private float readyPositionDepth = -7.4f;
 
         [Header("References")]
         [SerializeField] private BallController ballController;
@@ -36,6 +37,7 @@ namespace Pickleball.Gameplay
         private bool serveFromRight = true;
         private bool hasBufferedShot;
         private Vector2 bufferedSwipe;
+        private float bufferedPace;
         private ShotType bufferedShotType;
         private float bufferedRelease;
         private float bufferedUntil;
@@ -53,11 +55,14 @@ namespace Pickleball.Gameplay
 
         private float Reach => baseMissReachDistance + Sim.ShotSim.SpeedReachBonus(loadout.speed);
 
-        /// <summary>Resolved once in Start() rather than on every shot: gear doesn't change mid-match,
-        /// and this feeds Update() every frame for the Speed stat's move-speed multiplier. See
-        /// ShotSim's Power/Spin/Control/Speed/Serve/Stamina bindings (Docs/GearProgression.md#1-stats)
-        /// for what each field does.</summary>
+        /// <summary>The player's gear stats (paddle Power, shoes Speed, grip Accuracy). Re-read at every
+        /// serve rather than once at startup: gear never changes mid-match, but it does change between
+        /// matches, and an upgrade bought on the Gear screen must count in the very next one.</summary>
         private Sim.LoadoutStats loadout;
+
+        /// <summary>Movement before gear, which the AI shares so an equal loadout means equal footwork.</summary>
+        public float BaseMoveSpeed => moveSpeed;
+        public float BaseReach => baseMissReachDistance;
 
         public event Action<ShotData> OnShotHit;
 
@@ -83,6 +88,7 @@ namespace Pickleball.Gameplay
                 paddleVisual = gameObject.AddComponent<PaddleVisual>();
                 paddleVisual.Initialize(false);
             }
+            if (GetComponent<OutfitVisual>() == null) gameObject.AddComponent<OutfitVisual>();
         }
 
         private void PlaySwingVisual(bool isForehand, ShotType shotType, float power)
@@ -212,7 +218,7 @@ namespace Pickleball.Gameplay
             if (ballController.CanContact(transform.position, SideId, Reach, MustLetBallBounce()))
             {
                 hasBufferedShot = false;
-                ExecuteRallyShot(bufferedSwipe, bufferedRelease, bufferedShotType, ballController.transform.position);
+                ExecuteRallyShot(bufferedSwipe, bufferedPace, bufferedRelease, bufferedShotType, ballController.transform.position);
             }
         }
 
@@ -286,6 +292,7 @@ namespace Pickleball.Gameplay
         /// <summary>Feedback for a swing that did not connect.</summary>
         private static void ShowMissedSwing(string reason)
         {
+            if (Debug.isDebugBuild) Debug.Log("[Swing] no contact: " + reason);
             if (GameplayHUD.Instance != null)
                 GameplayHUD.Instance.ShowShotFeedback(reason, UITheme.QualityColor(ShotQuality.Good));
         }
@@ -339,14 +346,16 @@ namespace Pickleball.Gameplay
             return nextShotIndex <= 3;
         }
 
-        private void HandleShotGestureCompleted(Vector2 swipeVector, float releaseTimestamp, ShotType shotType)
+        /// <param name="swipeVector">Aim: direction, with placement (depth, 0..1) as its length.</param>
+        /// <param name="pace">How hard to strike the ball, 0..1.</param>
+        private void HandleShotGestureCompleted(Vector2 swipeVector, float releaseTimestamp, ShotType shotType, float pace)
         {
             if (ballController == null || Time.timeScale <= 0f) return;
             if (RallyManager.Instance != null && !RallyManager.Instance.CanSideHit(SideId)) return;
 
             if (isServing)
             {
-                ExecuteServe(swipeVector, releaseTimestamp);
+                ExecuteServe(swipeVector, pace, releaseTimestamp);
             }
             else
             {
@@ -354,7 +363,7 @@ namespace Pickleball.Gameplay
                 if (ballController.CurrentShot.hitterId == SideId) return;
                 if (ballController.CanContact(transform.position, SideId, Reach, MustLetBallBounce()))
                 {
-                    ExecuteRallyShot(swipeVector, releaseTimestamp, shotType, ballController.transform.position);
+                    ExecuteRallyShot(swipeVector, pace, releaseTimestamp, shotType, ballController.transform.position);
                     return;
                 }
 
@@ -367,7 +376,7 @@ namespace Pickleball.Gameplay
                     // Score it against the contact actually made: once that window passed, tracking
                     // may already have moved the ring on to a later chance.
                     idealStrikeTimestamp = MatchClock.NowSeconds() + windowCentre;
-                    ExecuteRallyShot(swipeVector, releaseTimestamp, shotType, lateContact);
+                    ExecuteRallyShot(swipeVector, pace, releaseTimestamp, shotType, lateContact);
                     return;
                 }
 
@@ -378,6 +387,7 @@ namespace Pickleball.Gameplay
                     (planReachable && ballController.ContactWithin(targetMovePosition, SideId, Reach, requiresBounce, bufferSeconds)))
                 {
                     bufferedSwipe = swipeVector;
+                    bufferedPace = pace;
                     bufferedShotType = shotType;
                     bufferedRelease = releaseTimestamp;
                     bufferedUntil = releaseTimestamp + bufferSeconds;
@@ -389,7 +399,7 @@ namespace Pickleball.Gameplay
             }
         }
 
-        private void ExecuteServe(Vector2 swipeVector, float releaseTimestamp)
+        private void ExecuteServe(Vector2 swipeVector, float pace, float releaseTimestamp)
         {
             isServing = false;
 
@@ -398,26 +408,26 @@ namespace Pickleball.Gameplay
                 StrikeTimingIndicator.Instance.Hide();
             }
 
-            // Input encodes motion strength in vector length, independently of shot timing.
-            float power = Mathf.Clamp01(swipeVector.magnitude);
-
-            float depth01 = power;
+            // Placement is the swipe's length (depth in the service box) and its angle; speed is pace.
+            float depth01 = Mathf.Clamp01(swipeVector.magnitude);
+            pace = Mathf.Clamp01(pace);
             System.Numerics.Vector3 simTarget = Sim.ServeRules.BuildTarget(
                 SideId, serveFromRight, swipeVector.x, depth01);
             Vector3 targetPos = new Vector3(simTarget.X, simTarget.Y, simTarget.Z);
 
-            // Weak serves get a low arc -- low enough, and BallController's own net-clearance check
+            // Short serves get a low arc -- low enough, and BallController's own net-clearance check
             // faults it, no special-casing here.
-            float arc = Mathf.Lerp(0.7f, 1.25f, power);
+            float arc = Mathf.Lerp(0.7f, 1.25f, depth01);
             // Flight time is roughly in line with the AI's serve (1.05-1.5s over a similar distance);
             // the old 2.1-2.9s range made the player's serve crawl across the court by comparison.
-            float duration = Mathf.Lerp(1.9f, 1.3f, power);
+            float duration = Mathf.Lerp(1.9f, 1.3f, pace);
+            float power = pace;
 
             ShotData serveShot = new ShotData(0, ShotType.Serve, transform.position + Vector3.up * 0.2f, targetPos, arc, duration);
 
-            // Serve stat only shortens flight time here -- the swipe already fully determines the
-            // target with no RNG scatter to reduce (see ShotSim.ServeDurationMultiplier).
-            serveShot.duration *= Sim.ShotSim.ServeDurationMultiplier(loadout.serve);
+            // Paddle power shortens the serve's flight like any other drive. Accuracy has nothing to
+            // act on: the swipe fully determines a serve's target, with no scatter to reduce.
+            serveShot.duration *= Sim.ShotSim.PowerDurationMultiplier(loadout.power);
 
             serveShot.swipeAccuracy = power;
             serveShot.timingScore = power;
@@ -436,9 +446,9 @@ namespace Pickleball.Gameplay
         }
 
         /// <summary>Strikes the ball from <paramref name="contactPosition"/>. Callers establish that the
-        /// contact is legal (reach, height and kitchen rules -- the Speed stat widens reach by up to
+        /// contact is legal (reach, height and kitchen rules -- the shoes' Speed widens reach by up to
         /// 0.35 units): the ball now, or where it was for a late swing.</summary>
-        private void ExecuteRallyShot(Vector2 swipeVector, float releaseTimestamp, ShotType shotType,
+        private void ExecuteRallyShot(Vector2 swipeVector, float pace, float releaseTimestamp, ShotType shotType,
             Vector3 contactPosition)
         {
             if (ShotSystem.Instance == null) return;
@@ -466,10 +476,16 @@ namespace Pickleball.Gameplay
                 swipeVector: swipeVector,
                 shotType: shotType,
                 loadout: loadout,
-                shotIndexInRally: shotIndexInRally
+                shotIndexInRally: shotIndexInRally,
+                pace01: pace
             );
 
             isAutoPositioning = false;
+
+            if (Debug.isDebugBuild)
+                Debug.Log(string.Format("[Swing] hit {0} {1} timing {2:+0;-0}ms reach {3:F2} -> lands ({4:F1},{5:F1})",
+                    shot.shotType, shot.quality, signedTiming * 1000f,
+                    Vector3.Distance(transform.position, contactPosition), shot.targetPosition.x, shot.targetPosition.z));
 
             if (StrikeTimingIndicator.Instance != null)
             {
@@ -487,7 +503,7 @@ namespace Pickleball.Gameplay
             // Determine Forehand vs Backhand swing
             bool isForehand = (contactPosition.x >= transform.position.x);
             trackingIncoming = false;
-            PlaySwingVisual(isForehand, shot.shotType, Mathf.Clamp01(swipeVector.magnitude));
+            PlaySwingVisual(isForehand, shot.shotType, Mathf.Clamp01(pace));
 
             ballController.LaunchShot(shot);
             OnShotHit?.Invoke(shot);
@@ -509,6 +525,7 @@ namespace Pickleball.Gameplay
 
         public void ResetPosition()
         {
+            loadout = MetaGameState.GetLoadoutStats();
             trackingIncoming = false;
             hasBufferedShot = false;
             moveVelocity = Vector3.zero;

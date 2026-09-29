@@ -1100,7 +1100,7 @@ namespace Pickleball.UI
         // ============================================================
         // BOTTOM NAV
         // ============================================================
-        public static readonly string[] NavTabIds = new string[] { "HOME", "PLAY", "GEAR", "LEAGUE", "SHOP" };
+        public static readonly string[] NavTabIds = new string[] { "HOME", "LEAGUE", "GEAR", "SETTINGS" };
         private static readonly IconId[] navIcons = new IconId[] { IconId.Home, IconId.Play, IconId.Bolt, IconId.Trophy, IconId.Bag };
 
         /// <summary>
@@ -1111,11 +1111,8 @@ namespace Pickleball.UI
         /// <summary>
         /// The four-tab bar, shared by every nav screen. Delegates to <see cref="PSKit.BottomNav"/>.
         ///
-        /// The old bar carried a fifth PLAY tab. The board drops it: play is the lobby's own
-        /// full-width CTA, and a nav tab that duplicates the biggest button on the home screen only
-        /// splits the one action the whole screen exists to offer. A screen passing "PLAY" as the
-        /// active tab simply lights nothing, which is honest — a tour list is not a destination in
-        /// this bar.
+        /// Home, Leagues, Gear, Settings. There is no play tab: the two ways to play are Home's own
+        /// buttons. A screen passing an id that is not a tab simply lights nothing.
         /// </summary>
         public static GameObject BottomNav(Transform parent, string activeTab, Action<string> onSelect)
         {

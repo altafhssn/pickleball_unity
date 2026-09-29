@@ -1,108 +1,77 @@
-using System;
 using NUnit.Framework;
 using Pickleball.Sim;
 
 namespace Pickleball.Tests
 {
-    /// <summary>Tours are online and carry the stakes; practice against the AI is free and pays
-    /// nothing. See MatchModes.</summary>
+    /// <summary>Play with AI pays coins for a win and never moves league points; multiplayer splits
+    /// its reward pool 70/30 and moves league points both ways. See MatchModes.</summary>
     public class MatchModeTests
     {
-        // MIAMI BEACH: entry 50, win 220 coins / 28 trophies.
-        private const int StageEntry = 50;
-        private const int StageCoins = 220;
-        private const int StageTrophies = 28;
-
-        [TestCase(true)]
-        [TestCase(false)]
-        public void PracticePaysNothingWinOrLose(bool won)
+        [Test]
+        public void OnlyMultiplayerIsOnlineAndRanked()
         {
-            MatchPayout payout = MatchModes.Payout(MatchMode.Practice, won, StageCoins, StageTrophies,
-                won ? 7 : 1, won ? 1 : 7, 9, 20);
-            Assert.That(payout.Coins, Is.EqualTo(0));
-            Assert.That(payout.Trophies, Is.EqualTo(0));
-            Assert.That(payout.SeasonXp, Is.EqualTo(0));
-            Assert.That(payout.HasPerformanceBonus, Is.False);
+            Assert.That(MatchModes.IsOnline(MatchMode.Multiplayer), Is.True);
+            Assert.That(MatchModes.AffectsLeague(MatchMode.Multiplayer), Is.True);
+            Assert.That(MatchModes.IsOnline(MatchMode.AI), Is.False);
+            Assert.That(MatchModes.AffectsLeague(MatchMode.AI), Is.False);
         }
 
         [Test]
-        public void PracticeIsFreeToEnterAndOffline()
+        public void BeatingTheAiPaysCoinsAndNoLeaguePoints()
         {
-            Assert.That(MatchModes.EntryFee(MatchMode.Practice, StageEntry), Is.EqualTo(0));
-            Assert.That(MatchModes.IsOnline(MatchMode.Practice), Is.False);
+            MatchPayout win = MatchModes.Payout(MatchMode.AI, true);
+            Assert.That(win.Coins, Is.EqualTo(EconomyConfig.AiWinCoins).And.GreaterThan(0));
+            Assert.That(win.LeaguePoints, Is.Zero);
         }
 
         [Test]
-        public void ToursAreOnlineAndChargeTheStageEntry()
+        public void LosingToTheAiNeverChangesLeaguePoints()
         {
-            Assert.That(MatchModes.EntryFee(MatchMode.Tour, StageEntry), Is.EqualTo(StageEntry));
-            Assert.That(MatchModes.IsOnline(MatchMode.Tour), Is.True);
+            MatchPayout loss = MatchModes.Payout(MatchMode.AI, false);
+            Assert.That(loss.Coins, Is.EqualTo(EconomyConfig.AiLossCoins));
+            Assert.That(loss.LeaguePoints, Is.Zero);
+            Assert.That(MatchModes.ForfeitPayout(MatchMode.AI).LeaguePoints, Is.Zero);
+            Assert.That(MatchModes.ForfeitPayout(MatchMode.AI).Coins, Is.Zero);
         }
 
         [Test]
-        public void TourWinPaysTheStageReward()
+        public void MultiplayerWinAddsAndLossSubtractsLeaguePoints()
         {
-            MatchPayout close = MatchModes.Payout(MatchMode.Tour, true, StageCoins, StageTrophies, 7, 5, 0, 0);
-            Assert.That(close.Coins, Is.EqualTo(StageCoins));
-            Assert.That(close.Trophies, Is.EqualTo(StageTrophies));
-            Assert.That(close.SeasonXp, Is.EqualTo(40));
-
-            // A wider margin pays more coins, capped at +25%; trophies don't change.
-            MatchPayout rout = MatchModes.Payout(MatchMode.Tour, true, StageCoins, StageTrophies, 7, 0, 0, 0);
-            Assert.That(rout.Coins, Is.GreaterThan(close.Coins).And.AtMost((int)Math.Round(StageCoins * 1.25f)));
-            Assert.That(rout.Trophies, Is.EqualTo(StageTrophies));
+            Assert.That(MatchModes.Payout(MatchMode.Multiplayer, true).LeaguePoints, Is.EqualTo(LeagueConfig.WinPoints).And.GreaterThan(0));
+            Assert.That(MatchModes.Payout(MatchMode.Multiplayer, false).LeaguePoints, Is.EqualTo(-LeagueConfig.LossPoints).And.LessThan(0));
         }
 
         [Test]
-        public void TourWinPaysAPerformanceBonus()
+        public void MultiplayerCoinsSplitTheRewardPoolSeventyThirty()
         {
-            MatchPayout payout = MatchModes.Payout(MatchMode.Tour, true, StageCoins, StageTrophies, 7, 5, 3, 8);
-            Assert.That(payout.Coins, Is.EqualTo(StageCoins + 3 * 4 + 30));
-            Assert.That(payout.HasPerformanceBonus, Is.True);
-            Assert.That(payout.SeasonXp, Is.EqualTo(43));
+            int winner = MatchModes.Payout(MatchMode.Multiplayer, true).Coins;
+            int loser = MatchModes.Payout(MatchMode.Multiplayer, false).Coins;
+            Assert.That(winner + loser, Is.EqualTo(EconomyConfig.MultiplayerRewardPool));
+            Assert.That(winner * 30, Is.EqualTo(loser * 70), "the configured pool divides exactly 70/30");
         }
 
         [Test]
-        public void TourLossCostsAboutHalfTheStageTrophies()
+        public void MultiplayerForfeitIsALossThatEarnsNothing()
         {
-            MatchPayout payout = MatchModes.Payout(MatchMode.Tour, false, StageCoins, StageTrophies, 3, 7, 5, 12);
-            Assert.That(payout.Coins, Is.EqualTo(0));
-            Assert.That(payout.Trophies, Is.EqualTo(-(int)Math.Round(StageTrophies * 0.55f)));
-            Assert.That(payout.SeasonXp, Is.EqualTo(10));
-            Assert.That(payout.HasPerformanceBonus, Is.False);
+            MatchPayout forfeit = MatchModes.ForfeitPayout(MatchMode.Multiplayer);
+            Assert.That(forfeit.LeaguePoints, Is.EqualTo(MatchModes.Payout(MatchMode.Multiplayer, false).LeaguePoints));
+            Assert.That(forfeit.Coins, Is.Zero);
         }
 
-        [Test]
-        public void TourForfeitCostsMoreThanLosing()
+        [TestCase(100)]
+        [TestCase(10)]
+        [TestCase(250)]
+        [TestCase(101)]
+        [TestCase(7)]
+        [TestCase(1)]
+        [TestCase(0)]
+        public void RewardPoolSplitKeepsTheWholePoolAndTheRatio(int pool)
         {
-            MatchPayout loss = MatchModes.Payout(MatchMode.Tour, false, StageCoins, StageTrophies, 4, 7, 0, 0);
-            // Quitting while ahead is still scored as a loss.
-            MatchPayout forfeit = MatchModes.ForfeitPayout(MatchMode.Tour, StageTrophies, 6, 2);
-            Assert.That(forfeit.Trophies, Is.EqualTo(loss.Trophies - MatchModes.ForfeitSurcharge));
-            Assert.That(forfeit.Coins, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void LeavingPracticeCostsNothing()
-        {
-            MatchPayout forfeit = MatchModes.ForfeitPayout(MatchMode.Practice, StageTrophies, 0, 6);
-            Assert.That(forfeit.Trophies, Is.EqualTo(0));
-            Assert.That(forfeit.SeasonXp, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void PracticeLevelsGetHarderAndShowTheirOwnName()
-        {
-            float previous = -1f;
-            foreach (PracticeLevel level in Enum.GetValues(typeof(PracticeLevel)))
-            {
-                float skill = MatchModes.PracticeSkill(level);
-                Assert.That(skill, Is.InRange(0f, 1f));
-                Assert.That(skill, Is.GreaterThan(previous), level + " should be harder than the level before it");
-                // The match card labels the AI from its skill; it must read as the level picked.
-                Assert.That(MatchModes.SkillLabel(skill), Is.EqualTo(level.ToString().ToUpperInvariant()));
-                previous = skill;
-            }
+            Economy.SplitRewardPool(pool, 70, out int winner, out int loser);
+            Assert.That(winner + loser, Is.EqualTo(pool));
+            Assert.That(loser, Is.EqualTo(pool * 30 / 100), "loser's share rounds down");
+            // winner - 0.7 * pool, in tenths of a coin: never under 70%, and less than one coin over.
+            Assert.That(winner * 10 - pool * 7, Is.InRange(0, 9));
         }
     }
 }

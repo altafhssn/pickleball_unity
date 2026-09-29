@@ -32,13 +32,17 @@ namespace Pickleball.Gameplay
         private bool isSwiping = false;
 
         public bool IsSwiping => isSwiping;
+        /// <summary>Aim direction with placement (depth, 0..1) as its length, for the stroke so far.</summary>
         public Vector2 CurrentSwipeVector { get; private set; }
+        /// <summary>How hard the stroke so far would strike the ball, 0..1 (Sim.ShotSim.SwingPace).</summary>
+        public float CurrentPace { get; private set; }
         public ShotType CurrentPreviewShot { get; private set; } = ShotType.Flat;
 
         public event Action OnSwipeStart;
         public event Action<Vector2> OnSwipeUpdate;
         public event Action<Vector2, float> OnSwipeCompleted;
-        public event Action<Vector2, float, ShotType> OnShotGestureCompleted;
+        /// <summary>A finished shot gesture: aim (direction x placement), release time, shot type, pace.</summary>
+        public event Action<Vector2, float, ShotType, float> OnShotGestureCompleted;
         /// <summary>Fired continuously while dragging with the shot the current gesture *would* throw,
         /// so the HUD/trajectory preview can show it before release.</summary>
         public event Action<ShotType> OnShotTypePreview;
@@ -69,7 +73,7 @@ namespace Pickleball.Gameplay
         // flick feels the same everywhere, times the player's sensitivity preference.
         private float GestureScale => dpiScale * SensScale;
 
-        private float PowerFor(System.Numerics.Vector2 referenceDelta, float duration) => Sim.ShotSim.GesturePower(
+        private float PaceFor(System.Numerics.Vector2 referenceDelta, float duration) => Sim.ShotSim.SwingPace(
             referenceDelta.Length(), duration, fullPowerSwipeSpeed);
 
         private void Update()
@@ -127,6 +131,7 @@ namespace Pickleball.Gameplay
                     if (hit.gameObject.GetComponentInParent<UnityEngine.UI.Selectable>() != null) return;
             }
             CurrentSwipeVector = Vector2.zero;
+            CurrentPace = 0f;
             CurrentPreviewShot = RallyManager.Instance.State == MatchState.Serving ? ShotType.Serve : ShotType.Flat;
             samples.Clear();
             AddSample(pos);
@@ -142,20 +147,23 @@ namespace Pickleball.Gameplay
             samples.Add(new Sim.SwipeSample(new System.Numerics.Vector2(reference.x, reference.y), Time.unscaledTime));
         }
 
-        /// <summary>The swing vector (aim direction x power) for the stroke measured so far.</summary>
-        private Vector2 SwingVector(System.Numerics.Vector2 stroke, float seconds)
+        /// <summary>The swing vector for the stroke measured so far: its angle is the aim direction
+        /// and its length the placement (depth) -- both from the stroke's shape, never its speed.
+        /// Speed is the separate pace (<see cref="PaceFor"/>).</summary>
+        private static Vector2 SwingVector(System.Numerics.Vector2 stroke)
         {
             if (stroke.LengthSquared() < 0.0001f) return Vector2.zero;
             System.Numerics.Vector2 direction = Sim.SwipeGesture.AimDirection(stroke);
-            float magnitude = PowerFor(stroke, Mathf.Max(0.01f, seconds));
+            float depth = Sim.ShotSim.SwingDepth(stroke.Length());
             // Screen-left always means court-left, whichever hand holds the device.
-            return new Vector2(direction.X, direction.Y) * magnitude;
+            return new Vector2(direction.X, direction.Y) * depth;
         }
 
-        /// <summary>The rally shot a stroke plays, given where the ball will be met.</summary>
-        private ShotType RallyShotFor(System.Numerics.Vector2 stroke, float seconds)
+        /// <summary>The rally shot a stroke plays, given where the ball will be met. An upward stroke
+        /// that curves (<paramref name="bend"/>) is the lob -- the only way to play one.</summary>
+        private ShotType RallyShotFor(System.Numerics.Vector2 stroke, float seconds, float bend)
         {
-            var gesture = Sim.SwipeGesture.Classify(stroke, seconds);
+            var gesture = Sim.SwipeGesture.Classify(stroke, seconds, bend);
             float height = ExpectedContactHeight != null ? ExpectedContactHeight() : float.PositiveInfinity;
             return (ShotType)Sim.SwipeGesture.ForContactHeight(gesture, height);
         }
@@ -163,11 +171,12 @@ namespace Pickleball.Gameplay
         private void UpdateSwipe(Vector2 pos)
         {
             AddSample(pos);
-            Sim.SwipeGesture.MeasureStroke(samples, minSwipeDistance, out var stroke, out float seconds);
-            CurrentSwipeVector = SwingVector(stroke, seconds);
+            Sim.SwipeGesture.MeasureStroke(samples, minSwipeDistance, out var stroke, out float seconds, out float bend);
+            CurrentSwipeVector = SwingVector(stroke);
+            CurrentPace = PaceFor(stroke, Mathf.Max(0.01f, seconds));
 
             CurrentPreviewShot = RallyManager.Instance != null && RallyManager.Instance.State == MatchState.Serving
-                ? ShotType.Serve : RallyShotFor(stroke, seconds);
+                ? ShotType.Serve : RallyShotFor(stroke, seconds, bend);
             OnShotTypePreview?.Invoke(CurrentPreviewShot);
             OnSwipeUpdate?.Invoke(CurrentSwipeVector);
         }
@@ -180,19 +189,27 @@ namespace Pickleball.Gameplay
                 return;
             }
             AddSample(pos);
-            Sim.SwipeGesture.MeasureStroke(samples, minSwipeDistance, out var stroke, out float strokeSeconds);
+            Sim.SwipeGesture.MeasureStroke(samples, minSwipeDistance, out var stroke, out float strokeSeconds, out float bend);
             float touchDuration = Time.unscaledTime - touchStartTime;
 
             if (stroke.Length() >= minSwipeDistance)
             {
-                Vector2 finalSwipeVector = SwingVector(stroke, strokeSeconds);
+                Vector2 finalSwipeVector = SwingVector(stroke);
+                float pace = PaceFor(stroke, Mathf.Max(0.01f, strokeSeconds));
                 CurrentSwipeVector = finalSwipeVector;
+                CurrentPace = pace;
 
                 float releaseTimestamp = MatchClock.NowSeconds();
-                ShotType detectedShot = RallyShotFor(stroke, strokeSeconds);
+                ShotType detectedShot = RallyShotFor(stroke, strokeSeconds, bend);
+                // Development builds only: what the gesture was read as, for on-device tuning
+                // (adb logcat -s Unity | grep "\[Swing\]").
+                if (Debug.isDebugBuild)
+                    Debug.Log(string.Format("[Swing] stroke ({0:F0},{1:F0}) {2:F0}ms bend {3:F2} -> {4} depth {5:F2} pace {6:F2} aim {7:F2}",
+                        stroke.X, stroke.Y, strokeSeconds * 1000f, bend, detectedShot,
+                        finalSwipeVector.magnitude, pace, finalSwipeVector.x));
 
                 OnSwipeCompleted?.Invoke(finalSwipeVector, releaseTimestamp);
-                OnShotGestureCompleted?.Invoke(finalSwipeVector, releaseTimestamp, detectedShot);
+                OnShotGestureCompleted?.Invoke(finalSwipeVector, releaseTimestamp, detectedShot, pace);
             }
             else if (RallyManager.Instance != null && RallyManager.Instance.State == MatchState.Serving &&
                 RallyManager.Instance.IsPlayerServing && touchDuration < 0.4f)
@@ -201,7 +218,7 @@ namespace Pickleball.Gameplay
                 Vector2 tapServe = new Vector2(0f, 0.65f);
                 float timestamp = MatchClock.NowSeconds();
                 OnSwipeCompleted?.Invoke(tapServe, timestamp);
-                OnShotGestureCompleted?.Invoke(tapServe, timestamp, ShotType.Serve);
+                OnShotGestureCompleted?.Invoke(tapServe, timestamp, ShotType.Serve, 0.65f);
             }
             else
             {
@@ -210,6 +227,7 @@ namespace Pickleball.Gameplay
 
             isSwiping = false;
             CurrentSwipeVector = Vector2.zero;
+            CurrentPace = 0f;
             CurrentPreviewShot = ShotType.Flat;
         }
 
@@ -218,6 +236,7 @@ namespace Pickleball.Gameplay
             isSwiping = false;
             samples.Clear();
             CurrentSwipeVector = Vector2.zero;
+            CurrentPace = 0f;
             CurrentPreviewShot = ShotType.Flat;
         }
 

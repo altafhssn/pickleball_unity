@@ -4,24 +4,20 @@ namespace Pickleball.Gameplay
 {
     public class CameraController : MonoBehaviour
     {
-        // Framing is tuned for the 1080x1920 portrait target. The court's play area is 9 wide by 18
-        // deep, which is almost exactly the screen's 9:16 ratio, so a high, steeply-pitched view fits
-        // the whole court with very little waste. The previous setup (y 9.5, z -14, pitch 32, FOV 45)
-        // sat far too low and shallow: the top ~40% of the frame was empty background past the far
-        // baseline, the near baseline at z=-9 was off the bottom of the screen entirely, and at the
-        // player's own end the camera only covered x +/-2.75 -- so the player, who auto-runs to
-        // intercept shots out to x +/-4.5, would regularly run straight off the side of the screen.
-        // Pitch is the main lever on how three-dimensional the court reads: steeper flattens toward a
-        // top-down plan view, shallower gives depth but foreshortens the far court and eventually
-        // strands the near baseline partway up the screen. 54 degrees is the shallowest setting that
-        // still keeps every in-bounds landing spot and both players fully on screen.
+        // Framed on the swipe-tennis reference (a behind-the-player broadcast view), measured on a
+        // 9:16 portrait screen: far baseline 27% down, net 45%, the player's feet 73%, and the near
+        // half of the court about twice the screen height of the far half. The player stands about
+        // 8.6% of the screen tall -- the reference's own ratio -- where the old high 54-degree view
+        // (y 22, z -15.5) flattened the court to a plan and shrank both players to about 3.4%.
+        // The near sidelines sit off-screen at this depth, so the camera follows the player sideways
+        // (xTrackingFactor, maxHorizontalPan) to keep them in frame wherever they run.
         [Header("Camera Positioning")]
-        [SerializeField] private Vector3 offsetFromCourt = new Vector3(0f, 22.0f, -15.5f);
-        [SerializeField] private Vector3 lookAtRotation = new Vector3(54f, 0f, 0f);
-        [SerializeField] private float xTrackingFactor = 0.10f;
-        // Hard cap on the sideways pan. The framing only has ~0.4 units of horizontal slack past the
-        // sidelines, so an unbounded pan would push the far sideline off screen.
-        [SerializeField] private float maxHorizontalPan = 0.9f;
+        [SerializeField] private Vector3 offsetFromCourt = new Vector3(0f, 13.0f, -19.5f);
+        [SerializeField] private Vector3 lookAtRotation = new Vector3(36f, 0f, 0f);
+        [SerializeField] private float xTrackingFactor = 0.55f;
+        // Cap on the sideways pan: enough to keep a player at the sideline on screen, not so much
+        // that the far court swings out of view.
+        [SerializeField] private float maxHorizontalPan = 2.8f;
         [SerializeField] private float smoothSpeed = 4.0f;
 
         [Header("References")]
@@ -125,7 +121,7 @@ namespace Pickleball.Gameplay
                 if (shakeRetargetTimer <= 0f)
                 {
                     shakeTarget = Random.insideUnitSphere * strength;
-                    shakeTarget.z *= 0.4f; // less depth wobble -- it reads worst on this steep camera
+                    shakeTarget.z *= 0.4f; // less depth wobble -- it reads worst along the view axis
                     shakeRetargetTimer = 0.035f;
                 }
                 shakeOffset = Vector3.Lerp(shakeOffset, shakeTarget, Mathf.Clamp01(20f * dt));

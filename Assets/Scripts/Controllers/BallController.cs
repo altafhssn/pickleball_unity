@@ -47,10 +47,13 @@ namespace Pickleball.Gameplay
 
         private void Awake()
         {
-            // Make the ball itself read clearly on the steep top-down camera: a touch larger, and
-            // emissive so it stays bright against the court instead of washing into it.
+            // A ball about a tenth of the player's height, as in the swipe-tennis reference -- still
+            // several times a real pickleball, so it reads at phone size -- and emissive so it stays
+            // bright against the court. It was 0.28 for the old high camera, where a smaller ball got
+            // lost; from behind the player that read as a beach ball. Purely visual: nothing in the
+            // flight or contact math reads this scale.
             Transform vis = ballVisual != null ? ballVisual : transform;
-            if (vis == transform) vis.localScale = Vector3.one * 0.28f;
+            if (vis == transform) vis.localScale = Vector3.one * 0.2f;
             var rend = vis.GetComponent<Renderer>();
             if (rend != null && rend.sharedMaterial != null)
             {

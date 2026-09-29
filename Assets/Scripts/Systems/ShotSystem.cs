@@ -56,10 +56,11 @@ namespace Pickleball.Systems
             Vector3 idealStrikePos,
             Vector3 actualPlayerPos,
             float timingError,          // Absolute delta from ideal hit moment (seconds)
-            Vector2 swipeVector,         // Normalized direction and magnitude
+            Vector2 swipeVector,         // Direction, with placement (depth, 0..1) as its length
             ShotType shotType = ShotType.Flat,
             Sim.LoadoutStats loadout = default(Sim.LoadoutStats),
-            int shotIndexInRally = 0)
+            int shotIndexInRally = 0,
+            float pace01 = -1f)          // How hard it is struck, 0..1; < 0 means "same as depth"
         {
             Sim.ShotData simShot = Sim.ShotSim.EvaluateAndBuildShot(
                 hitterId,
@@ -73,7 +74,8 @@ namespace Pickleball.Systems
                 defaultArcHeight,
                 ref rng,
                 loadout,
-                shotIndexInRally);
+                shotIndexInRally,
+                pace01);
 
             return FromSim(simShot);
         }
@@ -111,8 +113,8 @@ namespace Pickleball.Systems
         /// </summary>
         public bool IsInBounds(Vector3 pos) => Sim.ShotSim.IsInBounds(ToSim(pos), Bounds());
 
-        public float PredictArcHeight(Vector3 start, Vector3 target, ShotType type) =>
-            Sim.ShotSim.CalculateArcHeight(ToSim(start), ToSim(target), (Sim.ShotType)type, defaultArcHeight);
+        public float PredictArcHeight(Vector3 start, Vector3 target, ShotType type, float pace01 = 1f) =>
+            Sim.ShotSim.CalculateArcHeight(ToSim(start), ToSim(target), (Sim.ShotType)type, defaultArcHeight, pace01);
 
         private static Sim.CourtBounds Bounds() => Sim.CourtDimensions.PlayBounds;
 

@@ -25,9 +25,11 @@ namespace Pickleball.UI
             new Lesson(IconId.Play, "YOU CONTROL THE SHOT",
                 "Your player runs to the ball automatically.\nWatch the bounce, then swipe to return it."),
             new Lesson(IconId.Bolt, "AIM AND POWER",
-                "Angle your swipe left or right to place the ball.\nA faster swipe sends it deeper."),
-            new Lesson(IconId.Ball, "LEARN ON THE COURT",
-                "Short prompts will coach your first serve, return and soft shot.\nYou can replay this guide from Play Mode."),
+                "Your swipe's direction aims the ball.\nA faster swipe hits it harder and deeper."),
+            new Lesson(IconId.Refresh, "LOB WITH A CURVE",
+                "Swipe upward in a curve for a high, looping lob.\nThere's no lob button -- the gesture is the lob."),
+            new Lesson(IconId.Trophy, "FIRST TO SEVEN",
+                "Singles. Only the server scores: win a rally on\nthe other serve to win the serve back. 7 wins.\nReplay this guide any time from Settings."),
         };
 
         public static GameObject Build(Transform parent, ScreenManager mgr)

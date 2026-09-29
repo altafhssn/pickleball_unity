@@ -16,6 +16,9 @@ namespace Pickleball.Utils
         private LineRenderer lineRenderer;
         private ShotType previewShot = ShotType.Flat;
         private BallController ball;
+        /// <summary>The marker's authored size: a flat disc. Resizing it uniformly stretched it into a
+        /// tall can, which only went unnoticed while the camera looked straight down on it.</summary>
+        private Vector3 markerBaseScale = new Vector3(1.2f, 0.02f, 1.2f);
 
         private void Awake()
         {
@@ -29,6 +32,7 @@ namespace Pickleball.Utils
 
             if (player == null) player = FindObjectOfType<PlayerController>();
             ball = FindObjectOfType<BallController>();
+            if (landingTargetIndicator != null) markerBaseScale = landingTargetIndicator.localScale;
         }
 
         private void Start()
@@ -58,7 +62,7 @@ namespace Pickleball.Utils
         private void HandleShotTypePreview(ShotType type)
         {
             previewShot = type;
-            ApplyPreviewStyle(Vector2.one * 0.5f);
+            ApplyPreviewStyle(0.5f);
         }
 
         private void HandleSwipeStart()
@@ -75,6 +79,9 @@ namespace Pickleball.Utils
             // hidden until then), so bring the preview up as soon as the swipe becomes playable.
             if (RallyManager.Instance != null && !RallyManager.Instance.CanSideHit(0)) return;
             lineRenderer.enabled = true;
+            // The landing circle is the gesture's answer -- where this swipe will send the ball --
+            // not a target to tap: aiming is still the swipe alone. Without it a swipe had no
+            // visible result until after release, and control felt lost.
             if (landingTargetIndicator != null) landingTargetIndicator.gameObject.SetActive(true);
 
             Vector3 startPos = ball != null && ball.CurrentShot.hitterId != 0 && ball.transform.position.z < 0f
@@ -82,7 +89,8 @@ namespace Pickleball.Utils
             // RNG-free preview: shows the intended target, never touches the match's deterministic stream.
             Vector3 targetPos = ShotSystem.Instance.PredictTargetPosition(startPos, swipeVector, true, previewShot);
 
-            float arc = ShotSystem.Instance.PredictArcHeight(startPos, targetPos, previewShot);
+            float pace = InputManager.Instance != null ? InputManager.Instance.CurrentPace : 1f;
+            float arc = ShotSystem.Instance.PredictArcHeight(startPos, targetPos, previewShot, pace);
             if (RallyManager.Instance != null && RallyManager.Instance.State == MatchState.Serving)
             {
                 float power = Mathf.Clamp01(swipeVector.magnitude);
@@ -98,12 +106,13 @@ namespace Pickleball.Utils
                 lineRenderer.SetPosition(i, CalculateArcPoint(startPos, targetPos, arc, t));
             }
 
-            ApplyPreviewStyle(swipeVector);
+            ApplyPreviewStyle(pace);
 
             if (landingTargetIndicator != null)
             {
                 landingTargetIndicator.position = targetPos;
-                landingTargetIndicator.localScale = Vector3.one * PreviewMarkerScale(previewShot);
+                float size = PreviewMarkerScale(previewShot);
+                landingTargetIndicator.localScale = new Vector3(markerBaseScale.x * size, markerBaseScale.y, markerBaseScale.z * size);
             }
         }
 
@@ -113,7 +122,7 @@ namespace Pickleball.Utils
             if (landingTargetIndicator != null)
             {
                 landingTargetIndicator.gameObject.SetActive(false);
-                landingTargetIndicator.localScale = Vector3.one;
+                landingTargetIndicator.localScale = markerBaseScale;
             }
         }
 
@@ -144,14 +153,15 @@ namespace Pickleball.Utils
             }
         }
 
-        private void ApplyPreviewStyle(Vector2 swipeVector)
+        /// <summary>The line's weight shows the pace: a hard swipe draws a thick line, a soft one thin.
+        /// Its end -- the landing circle -- shows the placement.</summary>
+        private void ApplyPreviewStyle(float pace)
         {
             if (lineRenderer == null) return;
             Color c = PreviewColor(previewShot);
             float baseWidth = previewShot == ShotType.Smash ? 0.13f :
                 previewShot == ShotType.Dink ? 0.055f : previewShot == ShotType.Lob ? 0.075f : 0.09f;
-            float power = Mathf.Clamp01(swipeVector.magnitude);
-            lineRenderer.startWidth = baseWidth * Mathf.Lerp(0.75f, 1.2f, power);
+            lineRenderer.startWidth = baseWidth * Mathf.Lerp(0.6f, 1.35f, Mathf.Clamp01(pace));
             lineRenderer.endWidth = previewShot == ShotType.Lob ? lineRenderer.startWidth * 0.8f :
                 lineRenderer.startWidth * 0.38f;
             lineRenderer.startColor = c;

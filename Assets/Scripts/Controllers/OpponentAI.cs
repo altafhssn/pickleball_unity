@@ -7,17 +7,24 @@ using Sim = Pickleball.Sim;
 
 namespace Pickleball.Gameplay
 {
-    public enum AIDifficulty { Easy, Medium, Hard }
-
+    /// <summary>
+    /// The Play with AI opponent. Its capability comes from the player's own gear: every match it is
+    /// handed the player's LoadoutStats (ConfigureForPlayer), so its shots get the same Power and
+    /// Accuracy and its footwork the same Speed, on the player's own base movement. There is no
+    /// difficulty to pick and it never adapts to recent results.
+    ///
+    /// What gear does not decide -- reaction time, timing error, aim error, unforced errors, shot
+    /// selection -- is the single tuning value <see cref="skill"/>, a playtesting setting.
+    /// </summary>
     public class OpponentAI : MonoBehaviour, IMatchParticipant
     {
         [Header("AI Settings")]
-        [SerializeField] private AIDifficulty difficulty = AIDifficulty.Medium;
-        [Tooltip("0 = a beginner who is slow, mistimes, and shanks shots; 1 = a near-perfect wall. " +
-                 "Set per match by ScreenManager from the chosen practice level -- the Easy/Medium/Hard " +
-                 "enum above only seeds a default.")]
+        [Tooltip("Tactics and error rates only -- reaction delay, timing and aim error, unforced errors " +
+                 "and shot choice. 0 = slow to react and error-prone; 1 = a near-perfect wall. Movement " +
+                 "speed, reach, shot power and accuracy come from the player's gear, not from this.")]
         [SerializeField, Range(0f, 1f)] private float skill = 0.45f;
-        [SerializeField] private Vector3 homePosition = new Vector3(0f, 1.0f, 6f);
+        /// <summary>Just inside the far baseline, mirroring the player's ready depth.</summary>
+        [SerializeField] private Vector3 homePosition = new Vector3(0f, 1.0f, 7.4f);
 
         [Header("References")]
         [SerializeField] private BallController ballController;
@@ -27,12 +34,9 @@ namespace Pickleball.Gameplay
         private PaddleVisual paddleVisual;
         private CharacterVisual characterVisual;
 
-        // All of these are now interpolated from `skill` in ApplySkill() rather than snapped to one
-        // of three buckets, so difficulty can ramp smoothly across a tour instead of in three steps.
-        private float moveSpeed = 4.2f;
+        // Behaviour, interpolated from `skill` in ApplySkill().
         private float reactionDelay = 0.22f;
         private float timingError = 0.18f;
-        private float missReachDistance = 1.35f;
         private float aimJitter = 1.5f;      // world-units of random error added to the AI's aim
         private float unforcedErrorChance = 0.10f; // chance the AI dumps an easy ball into the net
 
@@ -44,6 +48,12 @@ namespace Pickleball.Gameplay
         private float movementStartTime;
         private Vector3 moveVelocity;
         private float nextTrackingTime;
+
+        // Capability, from the player's gear in ConfigureForPlayer(). The defaults are the player's
+        // own base values with no gear, for a scene with no player to copy.
+        private Sim.LoadoutStats loadout;
+        private float moveSpeed = 6.0f;
+        private float missReachDistance = 1.6f;
 
         private ShotType incomingShotType = ShotType.Flat;
         private bool incomingWasServe = false;
@@ -87,7 +97,7 @@ namespace Pickleball.Gameplay
                 SideId, serveFromRight, horizontalAim, depth01);
             Vector3 serveTarget = new Vector3(simTarget.X, simTarget.Y, simTarget.Z);
             float arc = Mathf.Lerp(2.2f, 1.4f, skill);
-            float dur = Mathf.Lerp(1.5f, 1.05f, skill);
+            float dur = Mathf.Lerp(1.5f, 1.05f, skill) * Sim.ShotSim.PowerDurationMultiplier(loadout.power);
             ShotData serveShot = new ShotData(1, ShotType.Serve, transform.position + Vector3.up * 0.2f, serveTarget, arc, dur);
 
             PlaySwingVisual(true, ShotType.Serve, Mathf.Lerp(0.55f, 1f, skill));
@@ -99,7 +109,7 @@ namespace Pickleball.Gameplay
 
         private void Awake()
         {
-            ApplyDifficulty(difficulty);
+            ApplySkill();
 
             currentHomePosition = homePosition;
 
@@ -132,42 +142,26 @@ namespace Pickleball.Gameplay
             targetMovePosition = currentHomePosition;
         }
 
-        public void SetDifficulty(AIDifficulty diff)
+        /// <summary>
+        /// Matches the AI to the player for the coming match: the player's gear stats, applied to the
+        /// player's own base movement and reach. Called by ScreenManager every time an AI match starts,
+        /// so an upgrade bought between matches is matched in the next one.
+        /// </summary>
+        public void ConfigureForPlayer(Sim.LoadoutStats playerLoadout, float playerBaseMoveSpeed, float playerBaseReach)
         {
-            difficulty = diff;
-            ApplyDifficulty(diff);
+            loadout = playerLoadout;
+            moveSpeed = playerBaseMoveSpeed * Sim.ShotSim.SpeedMoveMultiplier(loadout.speed);
+            missReachDistance = playerBaseReach + Sim.ShotSim.SpeedReachBonus(loadout.speed);
         }
 
-        /// <summary>Sets a continuous skill level (0..1) and derives every behavioural parameter from
-        /// it. This is the entry point ScreenManager uses to scale the opponent per match.</summary>
-        public void ConfigureSkill(float skill01)
-        {
-            skill = Mathf.Clamp01(skill01);
-            ApplySkill();
-        }
-
-        public float Skill => skill;
-
-        private void ApplyDifficulty(AIDifficulty diff)
-        {
-            // The enum now just seeds a point on the continuous skill scale.
-            switch (diff)
-            {
-                case AIDifficulty.Easy: skill = 0.15f; break;
-                case AIDifficulty.Medium: skill = 0.45f; break;
-                case AIDifficulty.Hard: skill = 0.80f; break;
-            }
-            ApplySkill();
-        }
+        public Sim.LoadoutStats Loadout => loadout;
+        public float MoveSpeed => moveSpeed;
+        public float Reach => missReachDistance;
 
         private void ApplySkill()
         {
             reactionDelay      = Mathf.Lerp(0.42f, 0.03f, skill);
             timingError        = Mathf.Lerp(0.38f, 0.015f, skill);
-            // Above ~0.7 the AI is faster and rangier than the player's own base 6.0 / 1.6 -- that is
-            // deliberate: the top of the curve (last tour, high ranked) should feel like a wall.
-            moveSpeed          = Mathf.Lerp(3.4f, 6.6f, skill);
-            missReachDistance  = Mathf.Lerp(1.2f, 2.05f, skill);
             aimJitter          = Mathf.Lerp(2.3f, 0.12f, skill);
             // Only genuine beginners (skill < 0.5) ever shank an easy ball into the net. A competent
             // opponent does not hand you free points.
@@ -236,8 +230,8 @@ namespace Pickleball.Gameplay
             }
             else if (playerShot.shotType == ShotType.Lob)
             {
-                // Retreat deep to baseline (Z ~ 7.2f)
-                currentHomePosition = new Vector3(0f, 1.0f, 7.2f);
+                // Retreat behind the baseline for the high ball.
+                currentHomePosition = new Vector3(0f, 1.0f, 8.2f);
             }
             else
             {
@@ -337,6 +331,7 @@ namespace Pickleball.Gameplay
                 timingError: actualTimingError,
                 swipeVector: aiSwipeVector,
                 shotType: chosenShotType,
+                loadout: loadout,
                 shotIndexInRally: nextShot
             );
 
@@ -356,7 +351,7 @@ namespace Pickleball.Gameplay
             OnShotHit?.Invoke(shot);
 
             // Move back toward court position
-            float recoveryDepth = chosenShotType == ShotType.Dink || isNearKitchen ? 3.15f : 5.2f;
+            float recoveryDepth = chosenShotType == ShotType.Dink || isNearKitchen ? 3.15f : homePosition.z;
             currentHomePosition = new Vector3(shot.targetPosition.x * 0.28f, 1f, recoveryDepth);
             targetMovePosition = currentHomePosition;
             isMoving = true;

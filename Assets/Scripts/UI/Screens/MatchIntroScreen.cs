@@ -34,10 +34,11 @@ namespace Pickleball.UI
         private const float CountdownY = 681f;
         private const float DiscDiameter = 100f;
 
-        /// <param name="opponentRank">Under the opponent's name: their league for a live opponent,
-        /// the AI's level for practice.</param>
+        /// <param name="opponentRank">Under the opponent's name: their league for a live opponent, a
+        /// note that the AI is matched to the player's gear otherwise.</param>
+        /// <param name="aiMatch">True for Play with AI, false for a multiplayer match.</param>
         public static GameObject Build(Transform parent, ScreenManager mgr, string opponentName,
-            string opponentRank, bool practice)
+            string opponentRank, bool aiMatch)
         {
             GameObject root = UIBuilder.Child("MatchIntroScreen", parent);
             UIBuilder.Fill(root);
@@ -53,16 +54,16 @@ namespace Pickleball.UI
             Transform safe = UIBuilder.SafeArea(root.transform);
             GameObject board = PSKit.BoardHost(safe);
 
-            // Practice has no search, so nothing was "found".
+            // An AI match has no search, so nothing was "found".
             Text title = PSKit.Display(board.transform, "Title", TextAnchor.MiddleCenter,
-                practice ? "PRACTICE MATCH" : "MATCH FOUND", UITheme.Volt, UITheme.TypeHeroTitle);
+                aiMatch ? "PLAY WITH AI" : "MATCH FOUND", UITheme.Volt, UITheme.TypeHeroTitle);
             PSKit.BoardRow(title.gameObject, TitleY, 70f, 20f);
             UIBuilder.ClampLine(title, 40);
-            if (!practice) UIReferenceArt.Title(title, "title_found", 218f, 21.3f);
+            if (!aiMatch) UIReferenceArt.Title(title, "title_found", 218f, 21.3f);
 
             BuildSide(board.transform, YouDiscY, YouNameY, YouRankY, UITheme.Volt,
                 "YOU",
-                "RANK " + MetaGameState.PlayerLevel);
+                MetaGameState.CurrentLeague.Name + " LEAGUE");
 
             // VS badge: the ball itself, the same mark the splash and the search pulse use.
             GameObject vs = PSKit.BallMark(board.transform, UITheme.F(48f));

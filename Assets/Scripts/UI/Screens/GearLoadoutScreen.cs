@@ -1,19 +1,23 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Pickleball.Data;
+using Sim = Pickleball.Sim;
 
 namespace Pickleball.UI
 {
     /// <summary>
-    /// Gear loadout with a two-by-two slot grid and six attribute rows in a scrolling body.
-    /// The upgrade action and navigation remain reachable below the body on shorter screens.
+    /// Gear: the three stat slots and the outfit. Each slot improves exactly one passive stat -- the
+    /// paddle Power, the shoes Speed, the grip Accuracy -- and is upgraded with coins, one level at a
+    /// time, right here. The outfit is cosmetic: picking one changes the player's kit and nothing else,
+    /// and the section says so.
     /// </summary>
     public static class GearLoadoutScreen
     {
-        private const float CtaTop = UITheme.NavBarBottomGap + UITheme.NavBarHeight + 24f + UITheme.ButtonHeight;
-        private const float StatsHeight = 430f;
+        private const float SlotHeight = 300f;
+        private const float SlotGap = 22f;
+        private const float OutfitTileHeight = 250f;
 
-        private static readonly string[] SlotNames = { "PADDLE", "SHOES", "GRIP", "EXTRA" };
+        private static readonly Sim.GearSlot[] Slots = { Sim.GearSlot.Paddle, Sim.GearSlot.Shoes, Sim.GearSlot.Grip };
 
         public static GameObject Build(Transform parent, ScreenManager mgr)
         {
@@ -22,156 +26,212 @@ namespace Pickleball.UI
             PSKit.Backdrop(root.transform);
             Transform safe = UIBuilder.SafeArea(root.transform);
 
-            UIBuilder.TopBar(safe, "LOADOUT", delegate { mgr.NavigateTab("HOME"); }, IconId.Star, MetaGameState.OverallRating.ToString());
+            UIBuilder.TopBar(safe, "GEAR", delegate { mgr.NavigateTab("HOME"); }, IconId.Coin, MetaGameState.Coins.ToString("N0"));
 
             RectTransform content;
             GameObject scroll = UIBuilder.ScrollView(safe, out content);
             UIBuilder.StretchRect(scroll, Vector2.zero, Vector2.one,
-                new Vector2(UITheme.SpaceLg, CtaTop + 24), new Vector2(-UITheme.SpaceLg, -UITheme.ContentTopInset));
-            content.sizeDelta = new Vector2(0, 1000);
-            BuildStage(content, mgr);
-            BuildStatsPanel(content);
+                new Vector2(UITheme.SpaceLg, UITheme.NavBarBottomGap + UITheme.NavBarHeight + 24f),
+                new Vector2(-UITheme.SpaceLg, -UITheme.ContentTopInset));
 
-            int upgradeable = 0;
-            foreach (GearItem g in MetaGameState.Gear) if (MetaGameState.CanUpgrade(g)) upgradeable++;
-
-            UIBuilder.ButtonRefs upgradeBtn = UIBuilder.GreenButton(safe, "UPGRADE GEAR", new Vector2(0, UITheme.ButtonHeight), UITheme.TypeButton, delegate
+            float y = 0f;
+            foreach (Sim.GearSlot slot in Slots)
             {
-                GearItem target = MetaGameState.Gear.Find(g => MetaGameState.CanUpgrade(g));
-                if (target != null) mgr.ShowGearDetail(target);
-                else if (MetaGameState.Gear.Count > 0) mgr.ShowGearDetail(MetaGameState.Gear[0]);
-            });
-            UIBuilder.StretchRect(upgradeBtn.root, new Vector2(0f, 0f), new Vector2(1f, 0f),
-                new Vector2(UITheme.SpaceLg, UITheme.NavBarBottomGap + UITheme.NavBarHeight + 24f), new Vector2(-UITheme.SpaceLg, CtaTop));
-
-            // Nudge the label up so the "n READY" sub-line has room instead of overlapping it.
-            UIBuilder.Rect(upgradeBtn.label.gameObject, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0, 14), Vector2.zero);
-            Text sub = UIBuilder.Text(upgradeBtn.root.transform.Find("Content"), "Sub", TextAnchor.MiddleCenter,
-                upgradeable + (upgradeable == 1 ? " READY" : " READY"), new Color(1, 1, 1, 0.9f), 22, FontStyle.Bold);
-            UIBuilder.Rect(sub.gameObject, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 24), new Vector2(240, 30));
+                BuildSlot(content, y, slot, mgr);
+                y += SlotHeight + SlotGap;
+            }
+            y = BuildOutfits(content, y + 12f, mgr);
+            content.sizeDelta = new Vector2(0, y + 16f);
 
             UIBuilder.BottomNav(safe, "GEAR", delegate (string tab) { mgr.NavigateTab(tab); });
             return root;
         }
 
-        // ============================================================
-        private static void BuildStage(Transform safe, ScreenManager mgr)
+        private static string SlotName(Sim.GearSlot slot)
         {
-            GameObject stage = UIBuilder.Child("Stage", safe);
-            // Inset on the right so the slot column cannot run under the header's balance pill or off
-            // the screen edge -- at 0 the paddle slot and its level badge were both clipped.
-            UIBuilder.StretchRect(stage, new Vector2(0, 1), new Vector2(1, 1),
-                new Vector2(0, -480), new Vector2(0, 0));
-
-            const float heroLift = 0f;
-
-            GameObject disc = UIBuilder.HeroPlatformDisc(stage.transform, new Vector2(360, 360));
-            UIBuilder.Rect(disc, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-90, heroLift), new Vector2(360, 360));
-            disc.GetComponent<RectTransform>().anchoredPosition = new Vector2(-240, heroLift);
-            var preview = UIReferenceArt.Draw(stage.transform, "home_player").gameObject;
-            UIBuilder.Rect(preview, new Vector2(0.28f, 0.5f), new Vector2(0.28f, 0.5f),
-                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(350, 420));
-            if (preview.GetComponent<Image>().sprite == null)
+            switch (slot)
             {
-                preview.SetActive(false);
-                UIBuilder.IconAt(disc.transform, IconId.Player, 176f, Color.white, UITheme.OutlineNavy,
-                    new Vector2(0.5f, 0.5f), Vector2.zero);
+                case Sim.GearSlot.Paddle: return "PADDLE";
+                case Sim.GearSlot.Shoes: return "SHOES";
+                default: return "GRIP";
             }
+        }
 
-            // Two rows keep every slot above the attributes panel.
-            const float slotSize = 130f;
-            // Wide enough for the slot's type label to sit under it without the next slot's level
-            // badge — which overhangs its top-right corner — landing on top of the text.
-            const float slotGap = 38f;
-
-            for (int i = 0; i < 4; i++)
+        private static IconId SlotIcon(Sim.GearSlot slot)
+        {
+            switch (slot)
             {
-                GearType type = (GearType)i;
-                GearItem g = MetaGameState.GetEquipped(type);
-                bool hasItem = g != null;
+                case Sim.GearSlot.Paddle: return IconId.Paddle;
+                case Sim.GearSlot.Shoes: return IconId.Shoe;
+                default: return IconId.Tape;
+            }
+        }
 
-                GameObject slot = hasItem
-                    ? UIBuilder.GearSlot(stage.transform, slotSize, g.icon, g.level, g.rarity, false)
-                    : UIBuilder.GearSlot(stage.transform, slotSize, IconId.None, 0, Rarity.Common, true);
-
-                float y = -40f - (i / 2) * (slotSize + slotGap + 42f);
-                UIBuilder.Rect(slot, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f),
-                    new Vector2(-24f - (1 - i % 2) * (slotSize + slotGap), y), new Vector2(slotSize, slotSize));
-                UIBuilder.DropShadow(slot, -5f, 3f);
-
-                // Slot type label — without it every slot is an anonymous square and there is no way
-                // to tell which one takes shoes. Navy, because it sits below the slot on the pale
-                // sky where white is unreadable.
-                Text slotLabel = UIBuilder.Text(slot.transform, "SlotName", TextAnchor.UpperCenter, SlotNames[i],
-                    UITheme.InkOnLight, 25, FontStyle.Bold);
-                UIBuilder.Rect(slotLabel.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 1f), new Vector2(0, -4), new Vector2(0, 36));
-
-                Button slotBtn = slot.AddComponent<Button>();
-                slotBtn.transition = Selectable.Transition.None;
-                slotBtn.targetGraphic = slot.GetComponent<Image>();
-                if (hasItem)
-                {
-                    GearType capturedType = type;
-                    slotBtn.onClick.AddListener(delegate { mgr.ShowGearCatalog(capturedType); });
-                }
-                else
-                {
-                    GearType capturedType = type;
-                    slotBtn.onClick.AddListener(delegate { mgr.ShowGearCatalog(capturedType); });
-                }
+        private static string SlotEffect(Sim.GearSlot slot)
+        {
+            switch (slot)
+            {
+                case Sim.GearSlot.Paddle: return "Harder, faster shots";
+                case Sim.GearSlot.Shoes: return "Quicker to the ball, wider reach";
+                default: return "Shots land closer to your aim";
             }
         }
 
         // ============================================================
-        private static void BuildStatsPanel(Transform safe)
+        // STAT SLOTS
+        // ============================================================
+        private static void BuildSlot(Transform content, float y, Sim.GearSlot slot, ScreenManager mgr)
         {
-            // Shares MetaGameState.GetLoadoutStats() with the gameplay sim path rather than summing
-            // equipped gear separately -- one aggregation, not two copies that could drift. Clamps each
-            // of the 6 stats to 0-100 for this panel's 10-tick display only; the sim reads the same
-            // call's real, unclamped totals.
-            Pickleball.Sim.LoadoutStats loadout = MetaGameState.GetLoadoutStats();
-            int power = Mathf.Clamp(Mathf.RoundToInt(loadout.power), 0, 100);
-            int spin = Mathf.Clamp(Mathf.RoundToInt(loadout.spin), 0, 100);
-            int control = Mathf.Clamp(Mathf.RoundToInt(loadout.control), 0, 100);
-            int speed = Mathf.Clamp(Mathf.RoundToInt(loadout.speed), 0, 100);
-            int serve = Mathf.Clamp(Mathf.RoundToInt(loadout.serve), 0, 100);
-            int stamina = Mathf.Clamp(Mathf.RoundToInt(loadout.stamina), 0, 100);
+            int level = MetaGameState.GearLevel(slot);
+            bool maxed = Sim.GearRules.IsMaxLevel(level);
+            int cost = Sim.GearRules.UpgradeCost(level);
+            bool affordable = !maxed && MetaGameState.Coins >= cost;
+            string stat = Sim.GearRules.StatName(slot);
 
-            GameObject panel = UIBuilder.Panel(safe, "StatsPanel", new Vector2(0, StatsHeight), UITheme.PanelTop, UITheme.PanelDeep);
-            UIBuilder.StretchRect(panel, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0, -480f - StatsHeight), new Vector2(0, -480f));
-            UIBuilder.ShineLayer(panel.transform, 0.34f);
+            GameObject card = UIBuilder.Panel(content, "Slot_" + slot, new Vector2(0, SlotHeight), UITheme.PanelDarkTop, UITheme.PanelDarkDeep);
+            UIBuilder.StretchRect(card, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0, -(y + SlotHeight)), new Vector2(0, -y));
+            UIBuilder.ShineLayer(card.transform, 0.30f);
 
-            Text title = UIBuilder.Text(panel.transform, "AttrTitle", TextAnchor.MiddleLeft, "ATTRIBUTES", Color.white, 30, FontStyle.Bold);
-            UIBuilder.Rect(title.gameObject, new Vector2(0f, 1f), new Vector2(0.55f, 1f), new Vector2(0f, 1f), new Vector2(30, -26), new Vector2(0, 42));
+            // Icon well with the level on it.
+            GameObject well = UIBuilder.Child("IconWell", card.transform);
+            UIBuilder.Rect(well, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(26, -26), new Vector2(150, 150));
+            well.AddComponent<Image>();
+            UIBuilder.OutlinedGradientFill(well, UIBuilder.RoundedSprite(24), UITheme.SkyMid, UITheme.CourtDeep, UITheme.OutlineNavy, 5f);
+            UIBuilder.IconAt(well.transform, SlotIcon(slot), 110f, Color.white, UITheme.OutlineNavy, new Vector2(0.5f, 0.5f), Vector2.zero);
+            GameObject badge = UIBuilder.Chip(well.transform, "LV " + level, UITheme.PanelDarkDeep, 44f, 22);
+            UIBuilder.Rect(badge, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0, 2), badge.GetComponent<RectTransform>().sizeDelta);
 
-            GearItem equippedPaddle = MetaGameState.GetEquipped(GearType.Paddle);
-            if (equippedPaddle != null)
+            Text name = UIBuilder.StrokedText(card.transform, "Name", TextAnchor.MiddleLeft, SlotName(slot), UITheme.Cream, 44);
+            UIBuilder.Rect(name.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(200, -24), new Vector2(-220, 56));
+            UIBuilder.ClampLine(name);
+
+            Text statLine = UIBuilder.Text(card.transform, "Stat", TextAnchor.MiddleLeft,
+                stat + " " + Sim.GearRules.StatAtLevel(level) + "  ·  LEVEL " + level + " / " + Sim.GearConfig.MaxLevel,
+                UITheme.Volt, 25, FontStyle.Bold);
+            UIBuilder.Rect(statLine.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(200, -84), new Vector2(-220, 34));
+            UIBuilder.ClampLine(statLine);
+
+            Text effect = UIBuilder.Text(card.transform, "Effect", TextAnchor.MiddleLeft, SlotEffect(slot),
+                new Color(1f, 1f, 1f, 0.82f), 23, FontStyle.Normal);
+            UIBuilder.Rect(effect.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(200, -122), new Vector2(-220, 32));
+            UIBuilder.ClampLine(effect);
+
+            GameObject ticks = UIBuilder.Child("Ticks", card.transform);
+            UIBuilder.StretchRect(ticks, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(200, -186), new Vector2(-30, -158));
+            UIBuilder.Ticks(ticks.transform, Sim.GearConfig.MaxLevel, level, maxed ? 0 : 1, UITheme.TickFilled, new Color(1f, 1f, 1f, 0.35f));
+
+            // The upgrade itself.
+            Sim.GearSlot captured = slot;
+            UIBuilder.ButtonRefs button;
+            if (maxed)
             {
-                GameObject chip = UIBuilder.Chip(panel.transform, equippedPaddle.name, UITheme.FillActionGreenDeep, 50f, 20);
-                UIBuilder.Rect(chip, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-30, -24), chip.GetComponent<RectTransform>().sizeDelta);
+                button = UIBuilder.GhostButton(card.transform, "MAX LEVEL", new Vector2(0, 86), 28, null);
+                button.button.interactable = false;
             }
-
-            string[] labels = { "POWER", "SPIN", "CONTROL", "SPEED", "SERVE", "STAMINA" };
-            int[] values = { power, spin, control, speed, serve, stamina };
-            float rowY = 86f;
-
-            for (int i = 0; i < labels.Length; i++)
+            else
             {
-                Text label = UIBuilder.Text(panel.transform, "Lbl" + i, TextAnchor.MiddleLeft, labels[i], new Color(1, 1, 1, 0.9f), 27, FontStyle.Bold);
-                UIBuilder.Rect(label.gameObject, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(30, -rowY), new Vector2(150, 38));
-
-                GameObject tickHost = UIBuilder.Child("TickHost" + i, panel.transform);
-                UIBuilder.StretchRect(tickHost, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(250, -rowY - 34), new Vector2(-150, -rowY - 6));
-                // Filled ticks lifted from the pale TextPlayerBlue to a solid cyan: at the old value
-                // the filled and empty ticks were nearly the same brightness on this panel and the
-                // bar read as a flat strip rather than as a score out of ten.
-                UIBuilder.Ticks(tickHost.transform, 10, Mathf.RoundToInt(values[i] / 10f), 0, UITheme.TickFilled, UITheme.FillActionGreen);
-
-                Text value = UIBuilder.StrokedText(panel.transform, "Val" + i, TextAnchor.MiddleRight, values[i].ToString(), Color.white, 30);
-                UIBuilder.Rect(value.gameObject, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-30, -rowY), new Vector2(110, 38));
-                rowY += 52f;
+                string label = "UPGRADE  +" + Sim.GearConfig.StatPerLevel + " " + stat;
+                button = affordable
+                    ? UIBuilder.GreenButton(card.transform, label, new Vector2(0, 86), 28, delegate { Upgrade(captured, mgr); })
+                    : UIBuilder.GhostButton(card.transform, label, new Vector2(0, 86), 28, delegate { Upgrade(captured, mgr); });
             }
+            UIBuilder.StretchRect(button.root, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(26, 22), new Vector2(-26, 108));
+
+            if (!maxed)
+            {
+                // Price inside the button, right-aligned, so the label keeps the middle.
+                Transform face = button.root.transform.Find("Content");
+                GameObject price = UIBuilder.Child("Price", face != null ? face : button.root.transform);
+                UIBuilder.Rect(price, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-18, 0), new Vector2(190, 50));
+                UIBuilder.IconAt(price.transform, IconId.Coin, 34f, affordable ? UITheme.GoldTop : new Color(1f, 1f, 1f, 0.6f),
+                    UITheme.OutlineNavy, new Vector2(0f, 0.5f), new Vector2(18, 0));
+                Text priceText = UIBuilder.Text(price.transform, "Text", TextAnchor.MiddleLeft, cost.ToString("N0"),
+                    affordable ? UITheme.Ink1 : new Color(1f, 1f, 1f, 0.7f), 26, FontStyle.Bold);
+                UIBuilder.StretchRect(priceText.gameObject, Vector2.zero, Vector2.one, new Vector2(42, 0), Vector2.zero);
+                RectTransform labelRt = button.label.GetComponent<RectTransform>();
+                labelRt.offsetMax = new Vector2(labelRt.offsetMax.x - 170f, labelRt.offsetMax.y);
+            }
+        }
+
+        private static void Upgrade(Sim.GearSlot slot, ScreenManager mgr)
+        {
+            int level = MetaGameState.GearLevel(slot);
+            int cost = Sim.GearRules.UpgradeCost(level);
+            switch (MetaGameState.TryUpgradeGear(slot))
+            {
+                case Sim.PurchaseResult.Purchased:
+                    if (Pickleball.Systems.SoundManager.Instance != null) Pickleball.Systems.SoundManager.Instance.PlayPerfectShot();
+                    mgr.RefreshCurrentScreen();
+                    break;
+                case Sim.PurchaseResult.NotEnoughCoins:
+                    mgr.ShowNotice("NOT ENOUGH COINS",
+                        "This upgrade costs " + cost.ToString("N0") + " coins. Win matches, or watch an ad from the home screen, to earn more.");
+                    break;
+            }
+        }
+
+        // ============================================================
+        // OUTFITS
+        // ============================================================
+        private static float BuildOutfits(Transform content, float y, ScreenManager mgr)
+        {
+            Text heading = UIBuilder.StrokedText(content, "OutfitHeading", TextAnchor.MiddleLeft, "OUTFIT", UITheme.Cream, 44);
+            UIBuilder.StretchRect(heading.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(8, -(y + 56)), new Vector2(0, -y));
+            Text note = UIBuilder.Text(content, "OutfitNote", TextAnchor.MiddleRight, "COSMETIC ONLY · NO STATS",
+                UITheme.InkOnLight, 24, FontStyle.Bold);
+            UIBuilder.StretchRect(note.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0, -(y + 56)), new Vector2(-8, -y));
+            y += 72f;
+
+            const int columns = 3;
+            const float gap = 18f;
+            Outfit[] outfits = OutfitCatalog.All;
+            string selected = MetaGameState.OutfitId;
+            for (int i = 0; i < outfits.Length; i++)
+            {
+                int col = i % columns, row = i / columns;
+                float top = y + row * (OutfitTileHeight + gap);
+                GameObject cell = UIBuilder.Child("Outfit_" + outfits[i].id, content);
+                UIBuilder.StretchRect(cell, new Vector2(col / (float)columns, 1f), new Vector2((col + 1) / (float)columns, 1f),
+                    new Vector2(col == 0 ? 0 : gap * 0.5f, -(top + OutfitTileHeight)),
+                    new Vector2(col == columns - 1 ? 0 : -gap * 0.5f, -top));
+                BuildOutfitTile(cell, outfits[i], outfits[i].id == selected, mgr);
+            }
+            int rows = (outfits.Length + columns - 1) / columns;
+            return y + rows * (OutfitTileHeight + gap);
+        }
+
+        private static void BuildOutfitTile(GameObject cell, Outfit outfit, bool selected, ScreenManager mgr)
+        {
+            cell.AddComponent<Image>();
+            if (selected)
+                UIBuilder.OutlinedGradientFill(cell, UIBuilder.RoundedSprite(22), UITheme.Volt, UITheme.VoltDeep, UITheme.Outline, UITheme.StrokeOutlineThin);
+            else
+                UIBuilder.OutlinedGradientFill(cell, UIBuilder.RoundedSprite(22), UITheme.Panel, UITheme.Ink0, UITheme.Outline, UITheme.StrokeOutlineThin);
+
+            // Shirt over shorts: the two colours the kit changes.
+            GameObject shirt = UIBuilder.Child("Shirt", cell.transform);
+            UIBuilder.Rect(shirt, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -26), new Vector2(120, 86));
+            shirt.AddComponent<Image>();
+            UIBuilder.OutlinedFill(shirt, UIBuilder.RoundedSprite(16), outfit.shirt, UITheme.Outline, 5f);
+            GameObject shorts = UIBuilder.Child("Shorts", cell.transform);
+            UIBuilder.Rect(shorts, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -114), new Vector2(96, 50));
+            shorts.AddComponent<Image>();
+            UIBuilder.OutlinedFill(shorts, UIBuilder.RoundedSprite(12), outfit.shorts, UITheme.Outline, 5f);
+
+            Text label = UIBuilder.Text(cell.transform, "Name", TextAnchor.MiddleCenter, selected ? outfit.name + " ✓" : outfit.name,
+                selected ? UITheme.Ink1 : UITheme.Cream, 25, FontStyle.Bold);
+            UIBuilder.StretchRect(label.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(8, 16), new Vector2(-8, 58));
+            UIBuilder.ClampLine(label);
+
+            Button button = cell.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = cell.GetComponent<Image>();
+            string id = outfit.id;
+            button.onClick.AddListener(delegate
+            {
+                MetaGameState.SelectOutfit(id);
+                mgr.RefreshCurrentScreen();
+            });
         }
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Pickleball.Data;
@@ -49,140 +48,6 @@ namespace Pickleball.UI
             PSKit.BoardDisc(image.gameObject, y, diameter);
         }
 
-        public static GameObject Play(Transform parent, ScreenManager mgr)
-        {
-            GameObject root;
-            Transform board = Shell(parent, "PlayModeScreen", "LET'S PLAY", () => mgr.NavigateTab("HOME"), out root);
-            Art(board, "season_medal", 202, 108);
-            Label(board, "YOUR NEXT MATCH", 294, 38, true);
-            Label(board, "Choose your court. Make it count.", 334);
-            var tour = MetaGameState.CurrentTour;
-            var card = PSKit.DarkCard(board, "TourSummary", new Vector2(UITheme.F(330), UITheme.F(128)), 32);
-            PSKit.BoardRow(card.root, 439, 128, 30);
-            Text info = PSKit.Body(card.face.transform, "Summary", TextAnchor.MiddleCenter,
-                "TOUR  /  " + tour.name + "\nLive opponents online\nEntry " + tour.entryCoins + " coins  ·  Win reward " + tour.rewardCoins, UITheme.Cream, 35);
-            UIBuilder.Fill(info.gameObject);
-            ActionButton(board, "CHOOSE TOUR", 551, () => mgr.Show(ScreenId.TourSelect), true);
-            ActionButton(board, "PRACTICE VS AI", 648, () => mgr.Show(ScreenId.Practice));
-            Label(board, "Free · No rewards · Pick the AI level", 689, 32);
-            ActionButton(board, "HOW TO PLAY", 761, mgr.ShowHelp);
-            return root;
-        }
-
-        private static readonly string[] PracticeBlurbs =
-        {
-            "Slow and forgiving. Learn the swipes.",
-            "Steady rallies, few winners.",
-            "Quick and rangy. Punishes loose shots.",
-            "Tour-final strength. No free points.",
-        };
-
-        /// <summary>Practice against the AI: pick a level, play. Free, and it pays nothing.</summary>
-        public static GameObject Practice(Transform parent, ScreenManager mgr)
-        {
-            GameObject root;
-            Transform board = Shell(parent, "PracticeScreen", "PRACTICE", mgr.GoBack, out root);
-            Label(board, "Play the AI at your own pace.\nNo entry fee, no rewards, nothing to lose.", 150, 70);
-
-            Sim.PracticeLevel[] levels = (Sim.PracticeLevel[])Enum.GetValues(typeof(Sim.PracticeLevel));
-            PSKit.Stack[] cards = new PSKit.Stack[levels.Length];
-            Text[] names = new Text[levels.Length];
-            Text[] blurbs = new Text[levels.Length];
-            Action refresh = null;
-            for (int i = 0; i < levels.Length; i++)
-            {
-                Sim.PracticeLevel level = levels[i];
-                PSKit.Stack card = PSKit.DarkCard(board, "Level" + level, new Vector2(UITheme.F(330), UITheme.F(84)), 30);
-                PSKit.BoardRow(card.root, 250 + i * 100, 84, 30);
-                cards[i] = card;
-
-                names[i] = PSKit.Display(card.face.transform, "Name", TextAnchor.MiddleLeft,
-                    Sim.MatchModes.SkillLabel(Sim.MatchModes.PracticeSkill(level)), UITheme.Cream, 48);
-                UIBuilder.StretchRect(names[i].gameObject, new Vector2(0f, 0.5f), new Vector2(1f, 1f),
-                    new Vector2(UITheme.F(18), 0), new Vector2(-UITheme.F(18), -UITheme.F(6)));
-                blurbs[i] = PSKit.Body(card.face.transform, "Blurb", TextAnchor.MiddleLeft,
-                    PracticeBlurbs[i], UITheme.Cream, 30);
-                UIBuilder.StretchRect(blurbs[i].gameObject, new Vector2(0f, 0f), new Vector2(1f, 0.5f),
-                    new Vector2(UITheme.F(18), UITheme.F(6)), new Vector2(-UITheme.F(18), 0));
-                UIBuilder.ClampLine(blurbs[i], 20);
-
-                Button button = card.root.AddComponent<Button>();
-                button.targetGraphic = card.root.GetComponent<Image>();
-                button.transition = Selectable.Transition.None;
-                button.onClick.AddListener(() => { ScreenManager.SelectedPracticeLevel = level; refresh(); });
-            }
-
-            // The picked level wears the kit's "this one" volt; the rest stay dark.
-            refresh = () =>
-            {
-                Sim.PracticeLevel selected = ScreenManager.SelectedPracticeLevel;
-                for (int i = 0; i < levels.Length; i++)
-                {
-                    bool on = levels[i] == selected;
-                    cards[i].faceImage.color = on ? UITheme.Volt : UITheme.Panel;
-                    cards[i].baseImage.color = on ? UITheme.VoltDeep : UITheme.Ink0;
-                    names[i].color = on ? UITheme.Ink1 : UITheme.Cream;
-                    blurbs[i].color = on ? UITheme.Ink1 : UITheme.Cream;
-                }
-            };
-            refresh();
-
-            ActionButton(board, "START PRACTICE", 690, mgr.StartPracticeMatch, true);
-            return root;
-        }
-
-        public static GameObject Bags(Transform parent, ScreenManager mgr)
-        {
-            GameObject root;
-            Transform board = Shell(parent, "BagInventoryScreen", "YOUR BAGS", () => mgr.NavigateTab("HOME"), out root);
-            Label(board, "Win bags. Unlock your next upgrade.", 145);
-            RectTransform content;
-            GameObject scroll = UIBuilder.ScrollView(board, out content);
-            UIBuilder.StretchRect(scroll, Vector2.zero, Vector2.one,
-                new Vector2(UITheme.F(24), UITheme.F(166)), new Vector2(-UITheme.F(24), -UITheme.F(184)));
-            for (int i = 0; i < MetaGameState.BagSlots.Count; i++)
-            {
-                int index = i;
-                var card = PSKit.DarkCard(content, "Slot" + i, new Vector2(UITheme.F(342), UITheme.F(105)), 30);
-                UIBuilder.StretchRect(card.root, new Vector2(0, 1), Vector2.one,
-                    new Vector2(0, -UITheme.F(i * 117 + 105)), new Vector2(0, -UITheme.F(i * 117)));
-                Image gift = UIReferenceArt.Draw(card.face.transform, "gift");
-                UIBuilder.Rect(gift.gameObject, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(0, .5f),
-                    new Vector2(UITheme.F(10), 0), new Vector2(UITheme.F(59), UITheme.F(65)));
-                Text text = PSKit.Body(card.face.transform, "Status", TextAnchor.MiddleLeft, "", UITheme.Cream, 34);
-                UIBuilder.StretchRect(text.gameObject, Vector2.zero, Vector2.one, new Vector2(UITheme.F(82), UITheme.F(12)), new Vector2(-UITheme.F(10), -UITheme.F(8)));
-                Button button = card.root.AddComponent<Button>();
-                button.targetGraphic = card.root.GetComponent<Image>();
-                button.transition = Selectable.Transition.None;
-                button.onClick.AddListener(() => mgr.SelectBag(index));
-                UIBuilder.RunOnScreen(root, UpdateBag(index, text, button, gift));
-            }
-            content.sizeDelta = new Vector2(0, UITheme.F(MetaGameState.BagSlots.Count * 117));
-            Label(board, "One bag unlocks at a time.\nTap an unlocking bag to finish with gems.", 713, 52);
-            ActionButton(board, "WEEKLY REWARD", 773, () => mgr.ShowStartupLeagueResult());
-            ActionButton(board, "BACK TO HOME", 817, () => mgr.NavigateTab("HOME"));
-            return root;
-        }
-
-        private static IEnumerator UpdateBag(int index, Text text, Button button, Image gift)
-        {
-            while (text != null)
-            {
-                MetaGameState.RefreshBagTimers();
-                var slot = MetaGameState.BagSlots[index];
-                bool busy = false;
-                foreach (var other in MetaGameState.BagSlots) if (other.state == BagSlotState.Unlocking) busy = true;
-                string name = slot.state == BagSlotState.Empty ? "EMPTY SLOT" : (ChestCatalog.Find(slot.bagId) ?? ChestCatalog.Fallback).name.ToUpperInvariant();
-                string action = slot.state == BagSlotState.Empty ? "Win a tour match to earn a bag" : slot.state == BagSlotState.Ready ? "READY  ·  TAP TO OPEN"
-                    : slot.state == BagSlotState.Unlocking ? MetaGameState.BagTimerLabel(slot) + "  ·  FINISH NOW"
-                    : busy ? "SEALED  ·  Another bag is unlocking" : "SEALED  ·  TAP TO UNLOCK";
-                text.text = name + "\n" + action;
-                button.interactable = slot.state != BagSlotState.Empty && !(slot.state == BagSlotState.Sealed && busy);
-                gift.color = new Color(1, 1, 1, slot.state == BagSlotState.Empty ? .25f : 1);
-                yield return new WaitForSecondsRealtime(.5f);
-            }
-        }
-
         public static GameObject Account(Transform parent, ScreenManager mgr)
         {
             GameObject root;
@@ -198,18 +63,6 @@ namespace Pickleball.UI
                 mgr.ShowNotice("PLAYER ID COPIED", "Your player ID is ready to paste.");
             }, true);
             ActionButton(board, "BACK", 747, mgr.CloseAccount);
-            return root;
-        }
-
-        public static GameObject Purchase(Transform parent, ScreenManager mgr, string product)
-        {
-            GameObject root;
-            Transform board = Shell(parent, "PurchaseScreen", "STORE", mgr.GoBack, out root);
-            Art(board, "gift", 256, 136);
-            Label(board, product.ToUpperInvariant(), 397, 66, true);
-            Label(board, "COMING SOON", 461, 36, true);
-            Label(board, "This purchase is not available yet.\nNo payment has been taken.", 526, 76);
-            ActionButton(board, "BACK", 676, mgr.GoBack, true);
             return root;
         }
 

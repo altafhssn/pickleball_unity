@@ -47,7 +47,9 @@ namespace Pickleball.UI
             PSKit.Backdrop(root.transform);
             Transform safe = PSKit.BoardHost(UIBuilder.SafeArea(root.transform)).transform;
 
-            Action back = onBack != null ? onBack : (Action)delegate { mgr.NavigateTab("HOME"); };
+            // A tab of the bottom nav, except when opened from the pause menu over a live match.
+            bool asTab = onBack == null;
+            Action back = asTab ? (Action)delegate { mgr.NavigateTab("HOME"); } : onBack;
             GameObject header = PSKit.TopBar(safe, "SETTINGS", back);
             Text headerTitle = header.transform.Find("Title").GetComponent<Text>();
             UIReferenceArt.Title(headerTitle, "title_settings", 110.3f, 15.7f);
@@ -58,7 +60,8 @@ namespace Pickleball.UI
             RectTransform content;
             GameObject scroll = UIBuilder.ScrollView(safe, out content);
             UIBuilder.StretchRect(scroll, Vector2.zero, Vector2.one,
-                new Vector2(SidePad, UITheme.SpaceLg), new Vector2(-SidePad, -ContentTop));
+                new Vector2(SidePad, asTab ? UITheme.NavBarBottomGap + UITheme.NavBarHeight + UITheme.SpaceLg : UITheme.SpaceLg),
+                new Vector2(-SidePad, -ContentTop));
 
             float y = 0f;
 
@@ -83,12 +86,21 @@ namespace Pickleball.UI
             UIBuilder.Rect(logout.transform.parent.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0.5f, 1f), new Vector2(0, -(y + UITheme.F(42f))), new Vector2(0, UITheme.TouchMin));
 
+            // The how-to-play guide can be replayed from here. Not from the pause menu: it would take
+            // the player off a live match.
+            if (asTab)
+            {
+                Text help = PSKit.TextButton(content, "HOW TO PLAY", UITheme.InkOnLight, 52, mgr.ShowHelp);
+                UIBuilder.Rect(help.transform.parent.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                    new Vector2(0.5f, 1f), new Vector2(0, -(y + UITheme.F(42f) + UITheme.TouchMin)), new Vector2(0, UITheme.TouchMin));
+            }
+
             Text advanced = PSKit.TextButton(content, "PLAYER & CONTROLS", UITheme.InkOnLight, 30, null);
             UIBuilder.Rect(advanced.transform.parent.gameObject, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0.5f, 1f), new Vector2(0, -UITheme.F(360f)), new Vector2(0, UITheme.TouchMin));
+                new Vector2(0.5f, 1f), new Vector2(0, -UITheme.F(410f)), new Vector2(0, UITheme.TouchMin));
             GameObject extra = UIBuilder.Child("AdvancedSettings", content);
             UIBuilder.StretchRect(extra, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0, -UITheme.F(670f)), new Vector2(0, -UITheme.F(410f)));
+                new Vector2(0, -UITheme.F(720f)), new Vector2(0, -UITheme.F(460f)));
             // Aiming uses screen direction for either hand; the old handedness switch inverted it.
             float extraY = SliderRow(extra.transform, 0f, "Swipe sensitivity", MetaGameState.SwipeSensitivity,
                 delegate (float v) { MetaGameState.SwipeSensitivity = v; });
@@ -100,12 +112,14 @@ namespace Pickleball.UI
                 bool show = !extra.activeSelf;
                 extra.SetActive(show);
                 advanced.text = show ? "HIDE PLAYER & CONTROLS" : "PLAYER & CONTROLS";
-                content.sizeDelta = new Vector2(0, UITheme.F(show ? 720f : 500f));
+                content.sizeDelta = new Vector2(0, UITheme.F(show ? 770f : 550f));
             });
-            content.sizeDelta = new Vector2(0, UITheme.F(500f));
+            content.sizeDelta = new Vector2(0, UITheme.F(550f));
             Text version = PSKit.Body(safe, "Version", TextAnchor.MiddleCenter,
                 "v" + Application.version, UITheme.InkOnLightDim, 24);
-            PSKit.BoardRow(version.gameObject, 798f, 20f);
+            PSKit.BoardRow(version.gameObject, asTab ? 740f : 798f, 20f);
+
+            if (asTab) PSKit.BottomNav(safe, "SETTINGS", delegate (string tab) { mgr.NavigateTab(tab); });
             return root;
         }
 

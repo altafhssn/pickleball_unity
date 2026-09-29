@@ -42,6 +42,21 @@ namespace Pickleball.Sim
         /// <summary>Lowest contact height a Smash can be played from.</summary>
         public const float SmashMinHeight = 1.7f;
 
+        /// <summary>How far the middle of a stroke must bow away from a straight line -- as a fraction
+        /// of that line's length, see <see cref="Bend"/> -- to read as a curve. A deliberate arc of
+        /// about 85 degrees of a circle or more clears it; a thumb pivoting through the 30-50 degrees
+        /// it does on an intended-straight swipe reads under 0.08.</summary>
+        public const float LobMinBend = 0.13f;
+
+        /// <summary>The share of the path's length at each end that <see cref="Bend"/> ignores. The
+        /// finger's roll at touch-down and its flick at lift-off live here: a 3 mm hook on a 20 mm
+        /// swipe is about 13% of it, and measured with the ends included such hooks read as a
+        /// deliberate curve on over a quarter of ordinary drives.</summary>
+        private const float BendEndTrim = 0.15f;
+
+        /// <summary>A lob must also travel at least this far up the screen, in reference pixels.</summary>
+        public const float LobMinRise = 60f;
+
         /// <summary>
         /// Measures the deliberate stroke, excluding preparation and holds. Once a meaningful stroke
         /// starts, retain its origin through pauses and aim corrections. Falls back to the whole
@@ -50,8 +65,21 @@ namespace Pickleball.Sim
         public static void MeasureStroke(IReadOnlyList<SwipeSample> samples, float minDistance,
             out Vector2 delta, out float seconds)
         {
+            MeasureStroke(samples, minDistance, out delta, out seconds, out _);
+        }
+
+        /// <summary>
+        /// As above, plus <paramref name="bend"/>: how far the middle of the stroke's path bows away
+        /// from a straight line (see <see cref="Bend"/>; 0 = straight). The upward-curving swipe that
+        /// plays a lob is told apart from a straight drive by this alone. A stroke that pauses and
+        /// then corrects its aim is aiming, not curving, so it always reports 0.
+        /// </summary>
+        public static void MeasureStroke(IReadOnlyList<SwipeSample> samples, float minDistance,
+            out Vector2 delta, out float seconds, out float bend)
+        {
             delta = Vector2.Zero;
             seconds = 0f;
+            bend = 0f;
             if (samples == null || samples.Count < 2) return;
 
             // The stroke ends where the finger arrived at its lift-off point, so a hold before
@@ -74,6 +102,7 @@ namespace Pickleball.Sim
 
             delta = samples[end].Position - samples[begin].Position;
             seconds = samples[end].Time - samples[begin].Time;
+            bool heldToAim = false;
             // Remove interior holds as well as the lift-off hold. Keeping the full path for
             // direction must not turn a drive into a weak lob when the thumb pauses to aim.
             for (int i = begin; i < end; i++)
@@ -88,6 +117,7 @@ namespace Pickleball.Sim
                 {
                     seconds -= rest;
                     i = restEnd;
+                    heldToAim = true;
                 }
             }
             if (delta.Length() < minDistance)
@@ -97,8 +127,48 @@ namespace Pickleball.Sim
                 {
                     delta = whole;
                     seconds = samples[end].Time - samples[0].Time;
+                    begin = 0;
                 }
             }
+            bend = heldToAim ? 0f : Bend(samples, begin, end);
+        }
+
+        /// <summary>
+        /// The sagitta of the path's middle: take the points at <see cref="BendEndTrim"/> and
+        /// 1 - BendEndTrim of the way along the path (by length), and return how far the halfway point
+        /// sits from the line between them, divided by that line's length. The ends are left out so
+        /// the roll and flick of a real thumb don't count, and a single point is used rather than the
+        /// deepest one so a jitter spike can't either. A circular arc of angle t reads
+        /// (1 - cos(0.35t)) / (2 sin(0.35t)): 0.08 at 50 degrees, 0.14 at 90, 0.31 at 180.
+        /// </summary>
+        private static float Bend(IReadOnlyList<SwipeSample> samples, int begin, int end)
+        {
+            float total = 0f;
+            for (int i = begin; i < end; i++) total += Vector2.Distance(samples[i].Position, samples[i + 1].Position);
+            if (total < 0.0001f) return 0f;
+
+            Vector2 a = PointAlong(samples, begin, end, total * BendEndTrim);
+            Vector2 b = PointAlong(samples, begin, end, total * (1f - BendEndTrim));
+            Vector2 middle = PointAlong(samples, begin, end, total * 0.5f);
+            Vector2 chord = b - a;
+            float length = chord.Length();
+            if (length < 0.0001f) return 0f;
+            Vector2 normal = new Vector2(-chord.Y, chord.X) / length;
+            return SimMath.Abs(Vector2.Dot(middle - a, normal)) / length;
+        }
+
+        /// <summary>The point <paramref name="distance"/> along the path from sample
+        /// <paramref name="begin"/>, interpolated between samples.</summary>
+        private static Vector2 PointAlong(IReadOnlyList<SwipeSample> samples, int begin, int end, float distance)
+        {
+            for (int i = begin; i < end; i++)
+            {
+                Vector2 from = samples[i].Position, to = samples[i + 1].Position;
+                float step = Vector2.Distance(from, to);
+                if (distance <= step && step > 0f) return from + (to - from) * (distance / step);
+                distance -= step;
+            }
+            return samples[end].Position;
         }
 
         /// <summary>True if the finger stayed within RestRadius of sample <paramref name="index"/> for
@@ -114,8 +184,17 @@ namespace Pickleball.Sim
             return true;
         }
 
-        /// <summary>Classifies a stroke (in reference pixels) into a shot type.</summary>
-        public static ShotType Classify(Vector2 referenceDelta, float duration)
+        /// <summary>Classifies a straight stroke (in reference pixels) into a shot type.</summary>
+        public static ShotType Classify(Vector2 referenceDelta, float duration) =>
+            Classify(referenceDelta, duration, 0f);
+
+        /// <summary>
+        /// Classifies a stroke into a shot type. Direction and speed pick the drive family; an
+        /// upward stroke that curves (<paramref name="bend"/> at least <see cref="LobMinBend"/>) is
+        /// the lob. Speed is never what makes a lob: a slow straight lift is just a soft drive, and
+        /// its power still comes from the swipe speed like any other shot.
+        /// </summary>
+        public static ShotType Classify(Vector2 referenceDelta, float duration, float bend)
         {
             duration = SimMath.Max(0.01f, duration);
             float speed = referenceDelta.Length() / duration; // reference pixels per second
@@ -129,24 +208,32 @@ namespace Pickleball.Sim
                 return ShotType.Smash;
             }
 
-            // Dink: accept a shallow downward push, or any compact slow touch. The old -20px / 600
-            // px/s boundary made normal thumb-sized soft gestures fall through to Flat.
-            if (deltaY < -14f || (referenceDelta.Length() < 125f && speed < 720f))
+            // Dink: a shallow downward push. The old -20px boundary made normal thumb-sized soft
+            // gestures fall through to Flat.
+            if (deltaY < -14f)
+            {
+                return ShotType.Dink;
+            }
+
+            bool sideways = absX > SimMath.Abs(deltaY) * SliceSidewaysRatio && absX > 60f;
+
+            // Lob: an upward swipe that curves, however short or slow. There is no lob button; this
+            // is the only way to play one.
+            if (deltaY > LobMinRise && bend >= LobMinBend && !sideways)
+            {
+                return ShotType.Lob;
+            }
+
+            // Any other compact slow touch is a soft push -> Dink.
+            if (referenceDelta.Length() < 125f && speed < 720f)
             {
                 return ShotType.Dink;
             }
 
             // A flat sideways swipe -> Slice. Angled swipes are aim (see AimDirection), not a slice.
-            if (absX > SimMath.Abs(deltaY) * SliceSidewaysRatio && absX > 60f)
+            if (sideways)
             {
                 return ShotType.Slice;
-            }
-
-            // Lob: a deliberate upward lift. A slightly shorter/slightly quicker lift still counts,
-            // while a fast upward flick remains a topspin drive.
-            if (deltaY > 88f && duration > 0.16f && speed < 1050f)
-            {
-                return ShotType.Lob;
             }
 
             // Fast, aggressive upward swipe -> Topspin Drive

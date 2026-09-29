@@ -9,37 +9,31 @@ using Pickleball.Backend;
 using Pickleball.Data;
 using Pickleball.Gameplay;
 using Pickleball.Net;
+using Pickleball.Systems;
 
 namespace Pickleball.UI
 {
     public enum ScreenId
     {
         Boot,
-        StartupStanding,
-        StartupLeagueResult,
         Lobby,
-        TourSelect,
         Matchmaking,
         MatchIntro,
-        ChestOpening,
         GearLoadout,
-        GearCatalog,
-        GearDetail,
-        GearUpgradeReveal,
         League,
-        SeasonPass,
-        Shop,
         Settings,
         Tutorial,
-        SeasonComplete,
-        PlayMode, BagInventory, Account, Purchase, ProfileRecovery,
-        Practice
+        Account,
+        ProfileRecovery,
     }
 
     /// <summary>
     /// Owns the meta canvas (every screen except the in-match HUD, which is GameplayHUD's own
     /// separate canvas) and the navigation between screens: back-stack, bottom-nav tab switching,
     /// and the match/pause transitions that hand control over to GameplayHUD + RallyManager.
+    ///
+    /// The game has two ways to play, one per home-screen button: Play with AI and Multiplayer (see
+    /// Sim.MatchModes). The bottom nav has four destinations: Home, Leagues, Gear and Settings.
     /// </summary>
     public class ScreenManager : MonoBehaviour
     {
@@ -58,50 +52,29 @@ namespace Pickleball.UI
         private bool settingsFromPause;
         private bool accountFromPause;
         private bool tutorialReplay;
-        private string selectedProduct;
-        private int selectedBag = -1;
         private GameObject recoveryGO;
         private readonly Stack<ScreenId> backStack = new Stack<ScreenId>();
-        private GearItem selectedGear;
-        private GearType selectedGearType;
-        /// <summary>The mode of the match being set up or played. Tours are online-only and practice
-        /// is the only way to play the AI -- see Sim.MatchModes.</summary>
-        private Sim.MatchMode matchMode = Sim.MatchMode.Practice;
+
+        /// <summary>The mode of the match being set up or played. An AI match is always
+        /// Sim.MatchMode.AI and a networked one always Multiplayer.</summary>
+        private Sim.MatchMode matchMode = Sim.MatchMode.AI;
+        /// <summary>The id the current match is credited under (MetaGameState's reward ledger), so a
+        /// match pays out once however its end is reported. The Photon room name for multiplayer, a
+        /// fresh id per AI match.</summary>
+        private string currentMatchId;
         private INetworkTransport pendingMatchTransport;
         private MatchStartMessage pendingMatchStart;
         private bool pendingMatchIsPvP;
-        private string pendingOpponentName = "R. VEGA";
+        private string pendingOpponentName = "AI";
         private string pendingOpponentRank = "";
-
-        /// <summary>Tour entry coins charged in RunPreMatchChecks but not yet "spent for real" -- the
-        /// fee used to be taken the moment matchmaking began, and CANCEL / hardware-back on the
-        /// matchmaking screen refunded nothing. Cleared to 0 once a match actually starts (EnterMatch);
-        /// refunded in ExitMatchToLobby while still nonzero.</summary>
-        private int pendingTourEntryFee;
         private Sim.MatchMode pendingPostTutorialMode;
-
-        private const string PracticeLevelKey = "ps_practice_level";
-
-        /// <summary>The AI level practice matches are played at. A per-device preference, so it
-        /// lives in PlayerPrefs rather than the synced profile.</summary>
-        public static Sim.PracticeLevel SelectedPracticeLevel
-        {
-            get
-            {
-                return (Sim.PracticeLevel)Mathf.Clamp(PlayerPrefs.GetInt(PracticeLevelKey, 0),
-                    0, (int)Sim.PracticeLevel.Elite);
-            }
-            set
-            {
-                PlayerPrefs.SetInt(PracticeLevelKey, (int)value);
-                PlayerPrefs.Save();
-            }
-        }
 
         public Sim.MatchMode CurrentMatchMode => matchMode;
 
         private const int BaseSortOrder = 50;
         private const int PauseSortOrder = 150;
+
+        private const string AiOpponentName = "AI RIVAL";
 
         private void Awake()
         {
@@ -143,12 +116,11 @@ namespace Pickleball.UI
                 EnterMatch();
             }
             else if (System.Array.Exists(System.Environment.GetCommandLineArgs(),
-                a => a == "-autotourmatch" || a == "-autorankedmatch"))
+                a => a == "-automultiplayermatch" || a == "-autorankedmatch"))
             {
                 // QA hook for exercising real two-process PvP without manual UI navigation on a
-                // standalone build -- e.g. `Game.exe -autotourmatch`. Skips the entry fee. Never
-                // fires otherwise.
-                StartMatchmakingInternal(Sim.MatchMode.Tour);
+                // standalone build -- e.g. `Game.exe -automultiplayermatch`. Never fires otherwise.
+                StartMatchmakingInternal(Sim.MatchMode.Multiplayer);
             }
             else
             {
@@ -249,53 +221,28 @@ namespace Pickleball.UI
             }
         }
 
+        /// <summary>The bottom nav: HOME, LEAGUE, GEAR, SETTINGS (see PSKit.Tabs).</summary>
         public void NavigateTab(string tabId)
         {
             backStack.Clear();
             switch (tabId)
             {
                 case "HOME": Show(ScreenId.Lobby, false); break;
-                case "PLAY": Show(ScreenId.PlayMode, false); break;
-                case "GEAR": Show(ScreenId.GearLoadout, false); break;
                 case "LEAGUE": Show(ScreenId.League, false); break;
-                case "SHOP": Show(ScreenId.Shop, false); break;
+                case "GEAR": Show(ScreenId.GearLoadout, false); break;
+                case "SETTINGS": Show(ScreenId.Settings, false); break;
             }
         }
 
-        public void ShowGearDetail(GearItem item)
+        /// <summary>Rebuilds the current screen in place, for a change the screen displays (a
+        /// purchase, an outfit pick, coins from an ad).</summary>
+        public void RefreshCurrentScreen()
         {
-            selectedGear = item;
-            Show(ScreenId.GearDetail);
-        }
-
-        public void RefreshGearDetail(GearItem item)
-        {
-            selectedGear = item;
-            Show(ScreenId.GearDetail, false);
-        }
-
-        public void ShowGearCatalog(GearType type)
-        {
-            selectedGearType = type;
-            Show(ScreenId.GearCatalog);
-        }
-
-        public void ShowGearUpgradeReveal(GearItem item)
-        {
-            selectedGear = item;
-            Show(ScreenId.GearUpgradeReveal, false);
-        }
-
-        public void ShowChestOpening() { selectedBag = -1; Show(ScreenId.ChestOpening); }
-
-        public void SelectBag(int index)
-        {
-            MetaGameState.RefreshBagTimers();
-            if (index < 0 || index >= MetaGameState.BagSlots.Count) return;
-            var slot = MetaGameState.BagSlots[index];
-            if (slot.state == BagSlotState.Ready) { selectedBag = index; Show(ScreenId.ChestOpening); }
-            else if (slot.state == BagSlotState.Unlocking) ShowSkipBagConfirm(index);
-            else if (slot.state == BagSlotState.Sealed) MetaGameState.StartBagUnlock(index);
+            if (inPause || matchActive || currentScreenGO == null) return;
+            ScreenId id = currentScreen;
+            DismissModal();
+            ClearCurrentScreen();
+            currentScreenGO = BuildScreen(id);
         }
 
         public void ShowNotice(string title, string message)
@@ -325,14 +272,14 @@ namespace Pickleball.UI
 
         public void ConfirmForfeit()
         {
-            if (matchMode == Sim.MatchMode.Practice)
+            if (matchMode == Sim.MatchMode.AI)
             {
-                ShowDecisionModal("LEAVE PRACTICE?", "Practice matches don't count, so nothing is lost.",
+                ShowDecisionModal("LEAVE MATCH?", "Matches against the AI don't affect your league, so nothing is lost.",
                     "KEEP PLAYING", "LEAVE", ResumeFromPause, ForfeitMatch, IconId.Warn);
                 return;
             }
-            ShowDecisionModal("QUIT MATCH?", "Leaving counts as a loss, with an additional " +
-                Sim.MatchModes.ForfeitSurcharge + "-trophy penalty.",
+            ShowDecisionModal("QUIT MATCH?", "Leaving counts as a loss: " + Sim.LeagueConfig.LossPoints +
+                " league points and no coins.",
                 "KEEP PLAYING", "FORFEIT", ResumeFromPause, ForfeitMatch, IconId.Warn);
         }
 
@@ -344,17 +291,17 @@ namespace Pickleball.UI
 
         public void MatchmakingFailed()
         {
-            ShowDecisionModal("CAN'T FIND A MATCH", "Check your connection and try again, or practise against the AI. You won't be charged for a match that didn't start.",
-                "RETRY", "PRACTICE", () => { ExitMatchToLobby(); StartTourMatch(); },
-                PracticeInstead, IconId.Warn);
+            ShowDecisionModal("CAN'T FIND A MATCH", "Check your connection and try again, or play the AI instead. Matches against the AI don't affect your league.",
+                "RETRY", "PLAY WITH AI", () => { ExitMatchToLobby(); StartMultiplayerMatch(); },
+                PlayAiInstead, IconId.Warn);
         }
 
-        /// <summary>Leaves an online search (refunding the entry fee, see ExitMatchToLobby) for the
-        /// practice screen. Offered while a tour search is taking a while, and when one fails.</summary>
-        public void PracticeInstead()
+        /// <summary>Leaves a multiplayer search and starts a match against the AI instead. Offered
+        /// while a search is taking a while and when one fails -- the player's choice, never automatic.</summary>
+        public void PlayAiInstead()
         {
             ExitMatchToLobby();
-            Show(ScreenId.Practice);
+            StartAiMatch();
         }
 
         public void ShowConnectionRecovery(bool local)
@@ -382,7 +329,7 @@ namespace Pickleball.UI
                 StartCoroutine(WaitForProfileThenContinue());
                 return;
             }
-            ContinueAfterBoot();
+            Show(ScreenId.Lobby, false);
         }
 
         private IEnumerator WaitForProfileThenContinue()
@@ -392,107 +339,25 @@ namespace Pickleball.UI
                 yield return null;
             if (ProfileService.Instance != null && !ProfileService.Instance.IsLoaded)
                 Show(ScreenId.ProfileRecovery, false);
-            else ContinueAfterBoot();
+            else Show(ScreenId.Lobby, false);
         }
 
-        private void ContinueAfterBoot()
+        // ============================================================
+        // THE TWO MODES
+        // ============================================================
+
+        /// <summary>Home's PLAY WITH AI: a singles match against an AI matched to the player's own
+        /// gear. Straight to the match card -- there is nobody to search for.</summary>
+        public void StartAiMatch() => RunPreMatchChecks(Sim.MatchMode.AI);
+
+        /// <summary>Home's MULTIPLAYER: a ranked singles match against a random opponent from the
+        /// player's league, found by PhotonQuickMatch on the matchmaking screen.</summary>
+        public void StartMultiplayerMatch() => RunPreMatchChecks(Sim.MatchMode.Multiplayer);
+
+        private void RunPreMatchChecks(Sim.MatchMode mode)
         {
-            if (MaybeShowSeasonComplete()) return;
-            Show(MetaGameState.ShouldShowStartupResults ? ScreenId.StartupStanding : ScreenId.Lobby, false);
-        }
-
-        /// <summary>
-        /// Shows the season-complete screen once, the first time the app opens in a new season.
-        ///
-        /// It reports the rollover; it does not perform one. Resetting the tier, banking the final
-        /// standing and paying end-of-season rewards is economy work that does not exist yet, and
-        /// wiring a screen to silently zero a player's progress would be worse than the screen not
-        /// existing. Returns true if it took over the boot flow.
-        /// </summary>
-        private bool MaybeShowSeasonComplete()
-        {
-            int current = MetaGameState.CurrentSeasonNumber;
-            int lastSeen = PlayerPrefs.GetInt(LastSeenSeasonKey, current);
-            PlayerPrefs.SetInt(LastSeenSeasonKey, current);
-            PlayerPrefs.Save();
-
-            if (lastSeen >= current) return false;
-            Show(ScreenId.SeasonComplete, false);
-            return true;
-        }
-
-        private const string LastSeenSeasonKey = "ps_last_seen_season";
-
-        public void ShowStartupLeagueResult()
-        {
-            Show(ScreenId.StartupLeagueResult, false);
-        }
-
-        public void CompleteStartupResults()
-        {
-            if (!MetaGameState.ShouldShowStartupResults) { NavigateTab("HOME"); return; }
-            if (MetaGameState.AreBagSlotsFull())
-            {
-                ShowDecisionModal("MAKE ROOM FOR YOUR REWARD", "Open a bag to make room for your weekly league chest. Your claim will remain available.",
-                    "YOUR BAGS", "LATER", () => Show(ScreenId.BagInventory), () => NavigateTab("HOME"), IconId.Chest);
-                return;
-            }
-            MetaGameState.MarkStartupResultsSeen();
-            // This flow only ever runs once per week (gated by ShouldShowStartupResults, which this
-            // marks seen above) -- the natural once-a-week trigger for League Chest
-            // (Docs/GearProgression.md#6-acquisition-b), which had no grant point at all before this.
-            MetaGameState.AddLeagueChest();
-            Show(ScreenId.Lobby, false);
-        }
-
-        /// <summary>A tour match: the current tour's entry fee, then a live opponent over Photon via
-        /// PhotonQuickMatch, landing on EnterPvPMatch once one is found. Tours are online-only.</summary>
-        public void StartTourMatch() => RunPreMatchChecks(Sim.MatchMode.Tour, false, false);
-
-        /// <summary>A free practice match against the AI at <see cref="SelectedPracticeLevel"/>. No
-        /// search screen: there is nobody to search for.</summary>
-        public void StartPracticeMatch() => RunPreMatchChecks(Sim.MatchMode.Practice, false, false);
-
-        private void RunPreMatchChecks(Sim.MatchMode mode, bool starterAccepted, bool bagAccepted)
-        {
-            // The equipment and bag warnings are about what a match can win, and practice wins nothing.
-            bool stakes = mode == Sim.MatchMode.Tour;
-            if (stakes && !starterAccepted && !bagAccepted && MetaGameState.HasStarterEquipment() &&
-                MetaGameState.AreBagSlotsFull())
-            {
-                ShowDecisionModal("MATCH CHECK",
-                    "Starter equipment is equipped and your bag slots are full. You can play, but a win cannot award another bag.",
-                    "PLAY ANYWAY", "EQUIPMENT",
-                    delegate { RunPreMatchChecks(mode, true, true); },
-                    delegate { NavigateTab("GEAR"); }, IconId.Warn);
-                return;
-            }
-
-            if (stakes && !starterAccepted && MetaGameState.HasStarterEquipment())
-            {
-                ShowDecisionModal("STARTER ITEM EQUIPPED",
-                    "You are entering a match with starter equipment. Play anyway?",
-                    "PLAY", "EQUIPMENT",
-                    delegate { RunPreMatchChecks(mode, true, bagAccepted); },
-                    delegate { NavigateTab("GEAR"); }, IconId.Tape);
-                return;
-            }
-
-            if (stakes && !bagAccepted && MetaGameState.AreBagSlotsFull())
-            {
-                ShowDecisionModal("BAG SLOTS FULL",
-                    "There is no room for a match bag. You can still play, but a win cannot award another bag.",
-                    "PLAY ANYWAY", "MANAGE BAGS",
-                    delegate { RunPreMatchChecks(mode, true, true); },
-                    delegate
-                    {
-                        Show(ScreenId.BagInventory);
-                    }, IconId.Chest);
-                return;
-            }
-
-            // First-ever match: show the how-to-play card before anything is charged. Its CONTINUE
-            // button re-enters this method with tutorial_seen set, so the flow picks up here.
+            // First-ever match: show the how-to-play card first. Its CONTINUE button re-enters the
+            // flow with tutorial_seen set.
             if (!MetaGameState.IsFeatureUnlocked("tutorial_seen"))
             {
                 tutorialReplay = false;
@@ -500,24 +365,6 @@ namespace Pickleball.UI
                 Show(ScreenId.Tutorial);
                 return;
             }
-
-            if (mode == Sim.MatchMode.Tour)
-            {
-                int fee = Sim.MatchModes.EntryFee(mode, MetaGameState.CurrentTour.entryCoins);
-                if (MetaGameState.Coins < fee)
-                {
-                    ShowDecisionModal("NOT ENOUGH COINS",
-                        "You need more coins to enter this tour.",
-                        "SHOP", "CANCEL",
-                        delegate { Show(ScreenId.Shop); },
-                        delegate { }, IconId.Coin);
-                    return;
-                }
-                MetaGameState.SpendCoins(fee);
-                // Held as refundable until a match actually starts -- see pendingTourEntryFee.
-                pendingTourEntryFee = fee;
-            }
-
             StartMatchmakingInternal(mode);
         }
 
@@ -527,7 +374,7 @@ namespace Pickleball.UI
         {
             if (tutorialReplay) { tutorialReplay = false; GoBack(); return; }
             MetaGameState.UnlockFeature("tutorial_seen");
-            RunPreMatchChecks(pendingPostTutorialMode, true, true);
+            StartMatchmakingInternal(pendingPostTutorialMode);
         }
 
         private void ShowDecisionModal(string title, string body, string primaryLabel, string secondaryLabel,
@@ -547,15 +394,6 @@ namespace Pickleball.UI
             modalGO = null;
         }
 
-        /// <summary>Shown when a real-money "$x.xx" store button is tapped. There is no payment flow
-        /// wired (Unity IAP), and every such button used to just grant its contents for free and
-        /// repeat on every revisit. Fails closed until IAP exists.</summary>
-        public void ShowStoreUnavailable(string productName)
-        {
-            selectedProduct = string.IsNullOrEmpty(productName) ? "Store purchase" : productName;
-            Show(ScreenId.Purchase);
-        }
-
         private void StartMatchmakingInternal(Sim.MatchMode mode)
         {
             backStack.Clear();
@@ -571,38 +409,56 @@ namespace Pickleball.UI
             else BeginMatchIntro();
         }
 
+        // ============================================================
+        // REWARDED ADS
+        // ============================================================
+
+        /// <summary>The optional watch-an-ad offer, from the home screen beside the coin balance.</summary>
+        public void ShowAdOffer()
+        {
+            if (!RewardedAds.IsOfferAvailable)
+            {
+                ShowNotice("NO ADS RIGHT NOW", MetaGameState.AdRewardsRemainingToday <= 0
+                    ? "You've collected today's ad rewards. Come back tomorrow."
+                    : "There's no ad ready yet. Try again in a moment.");
+                return;
+            }
+            int left = MetaGameState.AdRewardsRemainingToday;
+            ShowDecisionModal("FREE COINS",
+                "Watch a short ad to earn " + Sim.EconomyConfig.AdRewardCoins + " coins. " +
+                left + (left == 1 ? " ad" : " ads") + " left today. Optional -- skipping costs nothing.",
+                "WATCH AD", "NOT NOW", WatchAdForCoins, null, IconId.Coin);
+        }
+
+        private void WatchAdForCoins()
+        {
+            RewardedAds.WatchForCoins(delegate (bool credited)
+            {
+                RefreshCurrentScreen();
+                if (credited)
+                    ShowNotice("+" + Sim.EconomyConfig.AdRewardCoins + " COINS",
+                        "Thanks for watching. Your balance is now " + MetaGameState.Coins.ToString("N0") + ".");
+                else
+                    ShowNotice("NO COINS THIS TIME", "The ad didn't finish, so nothing was added.");
+            });
+        }
+
         private GameObject BuildScreen(ScreenId id)
         {
             switch (id)
             {
                 case ScreenId.Boot: return BootScreen.Build(metaRoot, this);
-                case ScreenId.StartupStanding: return StartupResultsScreen.BuildStanding(metaRoot, this);
-                case ScreenId.StartupLeagueResult: return StartupResultsScreen.BuildLeagueResult(metaRoot, this);
                 case ScreenId.Lobby: return LobbyScreen.Build(metaRoot, this);
-                case ScreenId.TourSelect: return TourSelectScreen.Build(metaRoot, this);
                 case ScreenId.Matchmaking: return MatchmakingScreen.Build(metaRoot, this);
                 case ScreenId.MatchIntro:
                     return MatchIntroScreen.Build(metaRoot, this, pendingOpponentName, pendingOpponentRank,
                         !pendingMatchIsPvP);
-                case ScreenId.Practice: return FlowScreens.Practice(metaRoot, this);
-                case ScreenId.ChestOpening: return ChestOpeningScreen.Build(metaRoot, this, selectedBag);
-                case ScreenId.PlayMode: return FlowScreens.Play(metaRoot, this);
-                case ScreenId.BagInventory: return FlowScreens.Bags(metaRoot, this);
                 case ScreenId.Account: return FlowScreens.Account(metaRoot, this);
-                case ScreenId.Purchase: return FlowScreens.Purchase(metaRoot, this, selectedProduct ?? "Store purchase");
                 case ScreenId.ProfileRecovery: return FlowScreens.ProfileRecovery(metaRoot, this);
                 case ScreenId.GearLoadout: return GearLoadoutScreen.Build(metaRoot, this);
-                case ScreenId.GearCatalog: return GearCatalogScreen.Build(metaRoot, this, selectedGearType);
-                case ScreenId.GearDetail: return GearDetailScreen.Build(metaRoot, this, selectedGear);
-                case ScreenId.GearUpgradeReveal: return GearUpgradeRevealScreen.Build(metaRoot, this, selectedGear);
                 case ScreenId.League: return LeagueScreen.Build(metaRoot, this);
-                case ScreenId.SeasonPass: return SeasonPassScreen.Build(metaRoot, this);
-                case ScreenId.Shop: return ShopScreen.Build(metaRoot, this);
                 case ScreenId.Settings: return SettingsScreen.Build(metaRoot, this);
                 case ScreenId.Tutorial: return TutorialScreen.Build(metaRoot, this);
-                case ScreenId.SeasonComplete:
-                    return SeasonCompleteScreen.Build(metaRoot, this, MetaGameState.CurrentSeasonNumber - 1,
-                        MetaGameState.SeasonTier, MetaGameState.LeagueTierName(MetaGameState.Trophies));
                 default: return null;
             }
         }
@@ -619,14 +475,14 @@ namespace Pickleball.UI
         // ============================================================
         // MATCH / PAUSE HAND-OFF
         // ============================================================
-        /// <summary>The practice match card: the AI, labelled with the level it will play at.</summary>
+        /// <summary>The AI match card.</summary>
         public void BeginMatchIntro()
         {
             pendingMatchIsPvP = false;
             pendingMatchTransport = null;
             pendingMatchStart = default(MatchStartMessage);
-            pendingOpponentName = "R. VEGA";
-            pendingOpponentRank = Sim.MatchModes.SkillLabel(Sim.MatchModes.PracticeSkill(SelectedPracticeLevel));
+            pendingOpponentName = AiOpponentName;
+            pendingOpponentRank = "MATCHED TO YOUR GEAR";
             Show(ScreenId.MatchIntro, false);
         }
 
@@ -636,9 +492,7 @@ namespace Pickleball.UI
             pendingMatchTransport = transport;
             pendingMatchStart = matchStart;
             pendingOpponentName = string.IsNullOrEmpty(matchStart.opponentName) ? "OPPONENT" : matchStart.opponentName;
-            // Their league, from the trophy count they reported -- the card used to show the AI's
-            // tour difficulty for a human opponent.
-            pendingOpponentRank = MetaGameState.LeagueTierName(matchStart.opponentTrophies);
+            pendingOpponentRank = MetaGameState.LeagueName(matchStart.opponentLeaguePoints) + " LEAGUE";
 
             GameObject managers = GameObject.Find("Managers");
             if (managers == null)
@@ -678,19 +532,17 @@ namespace Pickleball.UI
             else EnterMatch();
         }
 
+        /// <summary>Starts a match against the AI.</summary>
         public void EnterMatch()
         {
-            // A match against the AI is practice by definition, however it was reached.
-            matchMode = Sim.MatchMode.Practice;
+            matchMode = Sim.MatchMode.AI;
+            currentMatchId = "ai-" + Guid.NewGuid().ToString("N");
             matchActive = true;
             matchFinished = false;
             Time.timeScale = 1f;
             backStack.Clear();
             ClearCurrentScreen();
             metaCanvasGO.SetActive(false);
-
-            // The match is really starting now -- the entry fee is spent for good, no longer refundable.
-            pendingTourEntryFee = 0;
 
             if (GameplayHUD.Instance != null)
             {
@@ -706,13 +558,15 @@ namespace Pickleball.UI
             }
         }
 
-        /// <summary>Sets the AI to the practice level the player picked. The AI only plays practice
-        /// matches; tours are online.</summary>
+        /// <summary>Matches the AI to the player's current gear -- same stats, same base movement.
+        /// Done at every AI match start, so an upgrade bought since the last match counts.</summary>
         private void ConfigureOpponentForMatch()
         {
             OpponentAI ai = FindObjectOfType<OpponentAI>();
             if (ai == null) return;
-            ai.ConfigureSkill(Sim.MatchModes.PracticeSkill(SelectedPracticeLevel));
+            PlayerController player = FindObjectOfType<PlayerController>();
+            ai.ConfigureForPlayer(MetaGameState.GetLoadoutStats(),
+                player != null ? player.BaseMoveSpeed : 6f, player != null ? player.BaseReach : 1.6f);
         }
 
         /// <summary>PvP equivalent of EnterMatch, called once MatchmakingScreen's PhotonQuickMatch
@@ -721,11 +575,10 @@ namespace Pickleball.UI
         /// sessions never touch it.</summary>
         public void EnterPvPMatch(INetworkTransport transport, MatchStartMessage matchStart)
         {
-            matchMode = Sim.MatchMode.Tour;
+            matchMode = Sim.MatchMode.Multiplayer;
+            currentMatchId = "mp-" + (string.IsNullOrEmpty(matchStart.matchId) ? Guid.NewGuid().ToString("N") : matchStart.matchId);
             matchActive = true;
             matchFinished = false;
-            // As in EnterMatch: the match has started, so the entry fee is no longer refundable.
-            pendingTourEntryFee = 0;
             Time.timeScale = 1f;
             backStack.Clear();
             ClearCurrentScreen();
@@ -757,15 +610,6 @@ namespace Pickleball.UI
             HideConnectionRecovery();
             Time.timeScale = 1f;
             inPause = false;
-
-            // Left the flow before a match started (CANCEL / back on the matchmaking screen) -- give
-            // the tour entry fee back. EnterMatch zeroes this once a match is actually under way, so a
-            // completed or forfeited match keeps the fee.
-            if (pendingTourEntryFee > 0)
-            {
-                MetaGameState.AddCoins(pendingTourEntryFee);
-                pendingTourEntryFee = 0;
-            }
 
             if (pendingMatchTransport != null)
             {
@@ -845,18 +689,12 @@ namespace Pickleball.UI
         public void ForfeitMatch()
         {
             if (matchFinished) { ExitMatchToLobby(); return; }
-            // A tour forfeit is a loss, scored through the same table as any other loss (was a flat
-            // -19, which was cheaper than actually losing on the scoreboard -- so bailing out from
-            // behind was the correct play), plus a small surcharge so it is never the painless option.
-            // Leaving practice costs nothing.
-            if (matchMode == Sim.MatchMode.Tour)
-            {
-                RallyManager rally = RallyManager.Instance;
-                MatchReward reward = MatchRewards.Forfeit(matchMode, MetaGameState.CurrentTour,
-                    rally != null ? rally.playerScore : 0, rally != null ? rally.opponentScore : 0);
-                MetaGameState.AddTrophies(reward.trophies);
-                MetaGameState.AddSeasonXp(reward.seasonXp);
-            }
+            // A multiplayer forfeit is a loss for league points and pays no coins; leaving an AI
+            // match costs nothing. Settled through the ledger like a finished match, so the same
+            // match can never be settled twice.
+            RallyManager rally = RallyManager.Instance;
+            MetaGameState.ForfeitMatch(currentMatchId, matchMode,
+                rally != null ? rally.playerScore : 0, rally != null ? rally.opponentScore : 0);
 
             GameObject managers = GameObject.Find("Managers");
             NetworkedMatchController nmc = managers != null ? managers.GetComponent<NetworkedMatchController>() : null;
@@ -873,94 +711,28 @@ namespace Pickleball.UI
             HideConnectionRecovery();
             if (inPause) ResumeFromPause();
             RallyManager rally = RallyManager.Instance;
-            int playerScore = rally != null ? rally.playerScore : 0;
-            int opponentScore = rally != null ? rally.opponentScore : 0;
-            int perfects = rally != null ? rally.PlayerPerfectCount : 0;
-            int longestRally = rally != null ? rally.LongestRally : 0;
-
-            MatchReward reward = MatchRewards.Compute(matchMode, playerWon, MetaGameState.CurrentTour,
-                playerScore, opponentScore, perfects, longestRally);
-            MetaGameState.LastMatchReward = reward;
-            // Practice pays nothing: no coins, trophies, XP, bag, career win or tour progress.
-            if (matchMode != Sim.MatchMode.Tour) return;
-
-            MetaGameState.AddCoins(reward.coins);
-            MetaGameState.AddTrophies(reward.trophies);
-            MetaGameState.AddSeasonXp(reward.seasonXp);
-
-            if (playerWon)
-            {
-                MetaGameState.RecordCareerWin();
-                MetaGameState.AddMatchBag();
-                MetaGameState.RecordTourWin();
-            }
+            // Runs before GameplayHUD.ShowMatchResult (RallyManager raises OnMatchEnded first), so the
+            // result card reads the settled numbers.
+            MetaGameState.CompleteMatch(currentMatchId, matchMode, playerWon,
+                rally != null ? rally.playerScore : 0, rally != null ? rally.opponentScore : 0);
         }
 
-        /// <summary>Coins a PLAY AGAIN tap costs right now: the current tour's entry fee after a tour
-        /// match, nothing after practice. Drives the button's label.</summary>
-        public int PendingRematchFee =>
-            Sim.MatchModes.EntryFee(matchMode, MetaGameState.CurrentTour.entryCoins);
-
-        /// <summary>The match-result modal's PLAY AGAIN button. A tour rematch is a fresh online
-        /// search, through the same pre-match checks and entry fee as the first one (it used to
-        /// restart the local simulation for free). Practice restarts straight away at the same level.</summary>
+        /// <summary>The result card's PLAY AGAIN. Multiplayer searches for a new opponent; an AI
+        /// match restarts straight away as a new match (credited under a new id).</summary>
         public void RequestRematch()
         {
-            if (matchMode == Sim.MatchMode.Tour)
+            if (matchMode == Sim.MatchMode.Multiplayer)
             {
                 ExitMatchToLobby();
-                StartTourMatch();
+                StartMultiplayerMatch();
                 return;
             }
 
             if (GameplayHUD.Instance != null) GameplayHUD.Instance.HideMatchResult();
             matchFinished = false;
+            currentMatchId = "ai-" + Guid.NewGuid().ToString("N");
+            ConfigureOpponentForMatch();
             if (RallyManager.Instance != null) RallyManager.Instance.RestartMatch();
-        }
-
-        /// <summary>Lobby taps an unlocking bag: confirm spending gems to finish its timer now.</summary>
-        public void ShowSkipBagConfirm(int index)
-        {
-            if (index < 0 || index >= MetaGameState.BagSlots.Count) return;
-            BagSlot slot = MetaGameState.BagSlots[index];
-            int cost = MetaGameState.BagSkipGemCost(slot);
-            if (cost <= 0) return;
-
-            if (MetaGameState.Gems < cost)
-            {
-                ShowDecisionModal("NOT ENOUGH GEMS",
-                    "Finishing this bag now costs " + cost + " gems.",
-                    "SHOP", "CANCEL",
-                    delegate { Show(ScreenId.Shop); }, delegate { }, IconId.Gem);
-                return;
-            }
-
-            ShowDecisionModal("FINISH NOW?",
-                "Open this bag slot immediately for " + cost + " gems.",
-                "SPEND " + cost, "WAIT",
-                delegate
-                {
-                    MetaGameState.TrySkipBagUnlock(index);
-                    Show(ScreenId.BagInventory, false);
-                },
-                delegate { }, IconId.Gem);
-        }
-
-        /// <summary>Called by LobbyScreen on build. Pops the once-a-day login reward as a decision
-        /// modal; claiming it queues the reward banner the lobby shows on its next build.</summary>
-        public void MaybeShowDailyReward()
-        {
-            if (modalGO != null || !MetaGameState.CanClaimDailyReward) return;
-
-            ShowDecisionModal("DAILY REWARD",
-                "Your login reward is ready. Come back tomorrow to keep the streak going.",
-                "CLAIM", "LATER",
-                delegate
-                {
-                    MetaGameState.ClaimDailyReward();
-                    Show(ScreenId.Lobby, false);
-                },
-                delegate { }, IconId.Chest);
         }
 
         private void OnDestroy()
