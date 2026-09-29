@@ -138,7 +138,7 @@ namespace Pickleball.UI
             quickMatch.OnSearching += () =>
             {
                 StopTimer(root, elapsedTimer);
-                if (subStatus != null) elapsedTimer = UIBuilder.RunOnScreen(root, TickElapsedSearchTime(subStatus));
+                if (subStatus != null) elapsedTimer = UIBuilder.RunOnScreen(root, TickElapsedSearchTime(subStatus, quickMatch));
             };
 
             quickMatch.OnFailure += message =>
@@ -173,13 +173,14 @@ namespace Pickleball.UI
             if (host != null) host.StopCoroutine(timer);
         }
 
-        private static IEnumerator TickElapsedSearchTime(Text label)
+        private static IEnumerator TickElapsedSearchTime(Text label, PhotonQuickMatch quickMatch)
         {
             float start = Time.unscaledTime;
             while (true)
             {
                 int seconds = Mathf.FloorToInt(Time.unscaledTime - start);
-                label.text = string.Format("Searching... {0}:{1:00}", seconds / 60, seconds % 60);
+                label.text = string.Format("Searching... {0}:{1:00}\n{2}", seconds / 60, seconds % 60,
+                    quickMatch != null ? quickMatch.Diagnostics : string.Empty);
                 yield return null;
             }
         }

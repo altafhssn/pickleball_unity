@@ -55,6 +55,11 @@ namespace Pickleball.Net
         private bool searchFailed;
         private string opponentUserId;
 
+        /// <summary>One-line connection summary for the searching screen, so a failed pairing can be
+        /// diagnosed from two phones: two devices must show the same region and league to meet.</summary>
+        public string Diagnostics => "Region " + PhotonNetwork.CloudRegion + " | League " + leagueIndex +
+            " | Room players " + (PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.PlayerCount : 0);
+
         public void BeginQuickMatch()
         {
             matchStarted = false;
